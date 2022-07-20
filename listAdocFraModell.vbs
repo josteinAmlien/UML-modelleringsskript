@@ -78,7 +78,7 @@ Sub OnProjectBrowserScript()
 			' Code for when a package is selected
 ''			diagCounter = 0
 ''			figurcounter = 0
-			Dim innrykk
+			Dim innrykk, nivaa
 			Dim thePackage As EA.Package
 			set thePackage = Repository.GetTreeSelectedObject()
 			imgfolder = "diagrammer"
@@ -89,6 +89,7 @@ Sub OnProjectBrowserScript()
 			end if
 			Session.Output("// Start of UML-model")
 			innrykk = "==="
+			nivaa = 2
 			Call ListAsciiDoc(innrykk,thePackage)
 			Session.Output("// End of UML-model")
 		Case Else
@@ -113,8 +114,8 @@ Sub ListAsciiDoc(innrykk,thePackage)
 	if thePackage.Element.Stereotype <> "" then
 		overskrift = "Pakke: " & tekstformatStereotype(thePackage.Element.Stereotype) & thePackage.Name
 	else
-		Call adocInsertPageBreak
-		Call adocInsertBreak
+		Call skrivTekst(adocPageBreak())
+		Call skrivTekst(adocBreak())
 		if innrykk = "=====" then
 			overskrift = "Underpakke: " & thePackage.Name
 		else
@@ -122,44 +123,23 @@ Sub ListAsciiDoc(innrykk,thePackage)
 		end if
 
 	end if
-	Call adocSkrivOverskift( innrykk, overskrift)
+	Call skrivTekst(adocOverskrift( innrykk, overskrift) )
+	Call skrivTekst(adocDefinisjonsAvsnitt(  thePackage) )
 
-	Call adocSkrivDefinisjon( thePackage)
-
-'	if thePackage.element.TaggedValues.Count > 0 then
-'		listTags = false
-'		for each tag in thePackage.element.TaggedValues
-'			if tag.Value <> "" then	
-'				if tag.Name <> "persistence" and tag.Name <> "SOSI_melding" then
-'					if listTags = false then
-'						Call adocStorDiskretOverskrift(innrykk, "Profilparametre i tagged values")
-'						Call adocStartTabell("20,80")
-'						listTags = true
-'					end if
-'					Call adocTabellRad( tag.Name, tag.Value)
-'				end if
-'			end if
-'		next
-'		if listTags = true then
-'			call adocAvsluttTabell
-'		end if
-'	end if
-
+	dim tabellOverskrift, tabell
+	tabellOverskrift = adocStorDiskretOverskrift(innrykk, "Profilparametre i tagged values")
+	tabell = adocTabellstart("20,80", tabellOverskrift)
 	listTags = false
 	for each tag in thePackage.element.TaggedValues
 		if tag.Value = "" then	
 		elseif tag.Name = "persistence" or tag.Name = "SOSI_melding" then
 		else
-			if listTags = false then
-				Call adocStorDiskretOverskrift(innrykk, "Profilparametre i tagged values")
-				Call adocStartTabell("20,80")
-				listTags = true
-			end if
-			Call adocTabellRad( tag.Name, tag.Value)
+			tabell = appendArray( tabell, adocTabellRad( tag.Name, tag.Value) )
+			listTags = true
 		end if
 	next
-	if listTags = true then
-		call adocAvsluttTabell
+	if listTags then
+		call skrivTabell( tabell)
 	end if
 
 '-----------------Diagram-----------------
@@ -181,8 +161,8 @@ Sub ListAsciiDoc(innrykk,thePackage)
 				alternativbildetekst = "Bildet viser en illustrasjon av innholdet i UML-pakken " & thePackage.Name & ". Alle detaljene kommer i teksten nedenfor."
 			end if
 			
-			call adocSkrivBildeTekst(bildetekst, bilde, alternativbildetekst)
-			call adocInsertAvsnittSkille
+			call skrivTekst(adocBildeTekst(bildetekst, bilde, alternativbildetekst) )
+			call skrivTekst(adocAvsnittSkille( ))
 		end if
 	next
 	
@@ -190,9 +170,9 @@ Sub ListAsciiDoc(innrykk,thePackage)
 ''''		diagCounter = diagCounter + 1
 		Call projectclass.PutDiagramImageToFile(diag.DiagramGUID, imgparent & "\" & diag.Name & ".png", 1)
 		Repository.CloseDiagram(diag.DiagramID)
-		call adocInsertAvsnittSkille
-		call adocInsertBreak
-		call adocInsertAvsnittSkille
+		call skrivTekst(adocAvsnittSkille( ))
+		call skrivTekst(adocBreak())
+		call skrivTekst(adocAvsnittSkille( ))
 
 		if diag.Notes <> "" then
 			alternativbildetekst = diag.Notes
@@ -201,7 +181,7 @@ Sub ListAsciiDoc(innrykk,thePackage)
 		end if
 		
 		diagramFil = imgfolder & "\" & diag.Name & ".png"
-		call adocSkrivBildeTekst(diag.Name, diagramFil, alternativbildetekst)
+		call skrivTekst(adocBildeTekst(diag.Name, diagramFil, alternativbildetekst) )
 	Next
 
 '-----------------Elementer----------------- 
@@ -246,52 +226,52 @@ Sub ObjektOgDatatyper(innrykk,element,pakke)
 	Dim con As EA.Connector
 	Dim supplier As EA.Element
 	Dim client As EA.Element
+
 	Dim association
 	Dim aggregation
 	association = False
  
-	Dim numberSpecializations, numberGeneralizations, numberRealisations, elementnavn
+''	Dim numberSpecializations, numberGeneralizations, numberRealisations
+	dim elementnavn
 
 	Dim textVar, bilde, bildetekst, alternativbildetekst
 	dim externalPackage
 	Dim listTags
-	dim typ
+	dim typ, elementOverskrift
 
-	call adocInsertAvsnittSkille
-	call adocInsertBreak
+	call skrivTekst(adocAvsnittSkille( ))
+	call skrivTekst(adocBreak())
 	
-	call adocInsertAvsnittSkille
+	call skrivTekst(adocAvsnittSkille( ))
 
-	call adocInsertBokmerke(element)
+	call skrivTekst(adocBokmerke(element))
 	elementnavn = stereotypeNavn(element) 
 
 	if element.Abstract = 1 then
 		elementnavn = adocKursiv( elementnavn & " (abstrakt)" )    '''' NYTT: gjort abstracte klasser kursiv
 	end if
 	if innrykk = "=====" then
-		call adocSkrivOverskift(innrykk, pakke.Name & "::" & elementnavn)
+		elementOverskrift = adocOverskrift(innrykk, pakke.Name & "::" & elementnavn)
 	else
-		call adocSkrivOverskift(innrykk & "=", elementnavn)
+		elementOverskrift = adocOverskrift(innrykk & "=", elementnavn) 
 	end if
-	Call adocSkrivDefinisjon( element)
-	call adocInsertAvsnittSkille
+	call skrivTekst(elementOverskrift)
+	Call skrivTekst(adocDefinisjonsAvsnitt( element) )
+	call skrivTekst(adocAvsnittSkille( ))
 
-	for each tag in element.TaggedValues								
+	dim tabellOverskrift, tabell
+	tabellOverskrift = adocDiskretOverskrift(innrykk, "Profilparametre i tagged values")
+	tabell = adocTabellstart("20,80", tabellOverskrift)
+	listTags = false
+	for each tag in element.TaggedValues
 		if tag.Value = "" then	
 		elseif tag.Name = "persistence" or tag.Name = "SOSI_melding" or LCase(tag.Name) = "sosi_bildeavmodellelement" then
 		else
-			if listTags = false then
-				Call adocDiskretOverskrift(innrykk, "Profilparametre i tagged values")
-				Call adocStartTabell("20,80")
-				listTags = true
-			end if
-			Call adocTabellRad( tag.Name, tag.Value)			
+			tabell = appendArray( tabell, adocTabellRad( tag.Name, tag.Value) )
+			listTags = true
 		end if
 	next
-	if listTags = true then
-		call adocAvsluttTabell
-	end if
-	
+	if listTags then call skrivTabell( tabell)
 
 	
 	for each tag in element.TaggedValues								
@@ -312,55 +292,59 @@ Sub ObjektOgDatatyper(innrykk,element,pakke)
 				alternativbildetekst = "Bilde av et eksempel på objekttypen " & element.Name  '''' Tatt bort formuleringen om påtegning
 			end if
 			
-			call adocInsertAvsnittSkille
-			call adocInsertBreak
-			call adocSkrivBildeTekst(bildetekst, bilde, alternativbildetekst)
+			call skrivTekst(adocAvsnittSkille( ))
+			call skrivTekst(adocBreak())
+			call skrivTekst(adocBildeTekst(bildetekst, bilde, alternativbildetekst) )
 			
 		end if
 	next
 
-	if element.Attributes.Count > 0 then
-		Call adocDiskretOverskrift(innrykk, "Egenskaper")
+
+	dim egenskapsOverskrift 
+	egenskapsOverskrift = adocDiskretOverskrift(innrykk, "Egenskaper")
+''	if element.Attributes.Count > 0 then
+''		call skrivTekst(  adocDiskretOverskrift(innrykk, "Egenskaper") )
 		for each att in element.Attributes
-			Call adocStartTabell("20,80")
+			tabell = adocTabellstart("20,80", egenskapsOverskrift)
 			
-			Call adocTabellOverskrift( "Navn:", att.Name)
-			Call adocTabellRad( "Definisjon:", getCleanDefinition(att.Notes))
-			Call adocTabellRad( "Multiplisitet:", bounds(att))
+			tabell = appendArray( tabell, adocTabellOverskrift( "Navn:", att.Name) )
+			tabell = appendArray( tabell, adocTabellRad( "Definisjon:", getCleanDefinition(att.Notes)) )
+			tabell = appendArray( tabell, adocTabellRad( "Multiplisitet:", bounds(att)) )
 			if not att.Default = "" then
-				Call adocTabellRad( "Initialverdi:", att.Default)
+				tabell = appendArray( tabell, adocTabellRad( "Initialverdi:", att.Default) )
 			end if
 			if not att.Visibility = "Public" then
-				Call adocTabellRad( "Visibilitet:", att.Visibility)
+				tabell = appendArray( tabell, adocTabellRad( "Visibilitet:", att.Visibility) )
 			end if
 			
 			if att.ClassifierID <> 0 then
 				if isElement(att.ClassifierID) then
 					dim stereo
 					stereo = Repository.GetElementByID(att.ClassifierID).Stereotype
-					if stereo = "" then
-						typ = adocLink( att.Type, att.Type )
-					else
+''					if stereo = "" then
+''						typ = adocLink( att.Type, att.Type )
+''					else
 						typ = adocLink( att.Type, tekstformatStereotype(stereo) & att.Type )
-					end if
+''					end if
 				else
 					typ = att.Type
 				end if
 			else
 				typ = "http://skjema.geonorge.no/SOSI/basistype/" & att.Type & "[" & att.Type & "]"		''' adoc-syntaks for en link
 			end if
-			Call adocTabellRad( "Type:", typ)
+			tabell = appendArray( tabell, adocTabellRad( "Type:", typ) )
 
 			if att.TaggedValues.Count > 0 then
-				call adocTabellRad( "Profilparametre i tagged values: ", "")
+				tabell = appendArray( tabell, adocTabellRad( "Profilparametre i tagged values: ", "") )
 				for each tag in att.TaggedValues
-					call skrivTekstlinje(tag.Name& ": "&tag.Value & adocLinjeskift() )
+					tabell = appendArray( tabell, tag.Name& ": "&tag.Value & adocLinjeskift() )
 				next
 			end if
 			
-			call adocAvsluttTabell
+			call skrivTabell( tabell)
+			egenskapsOverskrift = ""			
 		next
-	end if
+''	end if
 
 
 	call Relasjoner(innrykk,element)
@@ -373,22 +357,28 @@ Sub ObjektOgDatatyper(innrykk,element,pakke)
 		call Restriksjoner(innrykk,element)
 	end if
 
+	call arvOgRealiseringer(innrykk, element)
+	
+end sub
+
+sub arvOgRealiseringer(innrykk, element)
+''''''''''''
+	Dim numberSpecializations, numberGeneralizations, numberRealisations, elementnavn
+	dim tabellOverskrift, tabell
+	
+	tabellOverskrift = adocDiskretOverskrift(innrykk, "Arv og realiseringer")
+	tabell = adocTabellstart("20,80", tabellOverskrift)
+
 ' Supertype
 	numberSpecializations = 0
 	For Each con In element.Connectors
 		set supplier = Repository.GetElementByID(con.SupplierID)
 		If con.Type = "Generalization" And supplier.ElementID <> element.ElementID Then
-			if numberSpecializations = 0 then
-				call adocInsertAvsnittSkille
-				Call adocDiskretOverskrift(innrykk, "Arv og realiseringer")
-				Call adocStartTabell("20,80")
-			end if
 			numberSpecializations = numberSpecializations + 1
-			call adocTabellRad("Supertype: ", targetLink(supplier))
-			call adocInsertAvsnittSkille
+			tabell = appendArray( tabell, adocTabellRad("Supertype: ", targetLink(supplier)) )
+			tabell = appendArray( tabell, adocAvsnittSkille( ))
 		End If
 	Next
-
 
 ' Spesialiseringer av klassen
 	numberGeneralizations = 0
@@ -397,15 +387,10 @@ Sub ObjektOgDatatyper(innrykk,element,pakke)
 			set supplier = Repository.GetElementByID(con.SupplierID)
 			set client = Repository.GetElementByID(con.ClientID)
 			If supplier.ElementID = element.ElementID then 'dette er en generalisering
-				if numberSpecializations = 0 and numberGeneralizations = 0 then
-					call adocInsertAvsnittSkille
-					Call adocDiskretOverskrift(innrykk, "Arv og realiseringer")
-					Call adocStartTabell("20,80")
-				end if		
 				If numberGeneralizations = 0 Then
-					call adocTabellRad("Subtyper:", "")
+					tabell = appendArray( tabell, adocTabellRad("Subtyper:", "") )
 				End If
-				call skrivTekstlinje(targetLink(client) & adocLinjeskift() )
+				tabell = appendArray( tabell, targetLink(client) & adocLinjeskift() )
 				numberGeneralizations = numberGeneralizations + 1
 			End If
 		End If
@@ -417,25 +402,23 @@ Sub ObjektOgDatatyper(innrykk,element,pakke)
 '- full sti (opp til applicationSchema eller øverste pakke under "Model") til pakke som inneholder klassen som realiseres
 		set supplier = Repository.GetElementByID(con.SupplierID)
 		If con.Type = "Realisation" And supplier.ElementID <> element.ElementID Then
-			if numberSpecializations = 0 and numberGeneralizations = 0 and numberRealisations = 0 then
-				Call adocDiskretOverskrift(innrykk, "Arv og realiseringer")
-				Call adocStartTabell("20,80")
-			end if		
 			set externalPackage = Repository.GetPackageByID(supplier.PackageID)
 			textVar=getPath(externalPackage)
 			if numberRealisations = 0 Then
-				call adocTabellRad("Realisering av: ", "")
+				tabell = appendArray( tabell, adocTabellRad("Realisering av: ", "") )
 				numberRealisations = numberRealisations + 1
 			end if
-			call skrivTekstlinje( textVar & "::" & stereotypeNavn(supplier) & adocLinjeskift())
-			call adocInsertAvsnittSkille
+			tabell = appendArray( tabell, textVar & "::" & stereotypeNavn(supplier) & adocLinjeskift())
+			tabell = appendArray( tabell, adocAvsnittSkille( ))
 			numberRealisations = numberRealisations + 1
 		end if
 	next
 
-	If numberSpecializations + numberGeneralizations + numberRealisations > 0 then
-		call adocAvsluttTabell
-	End If
+	if numberSpecializations = 0 and numberGeneralizations = 0 and numberRealisations = 0 then
+	else
+		call skrivTekst(adocAvsnittSkille( ))
+		call skrivTabell( tabell)
+	end if
 
 End sub
 '-----------------ObjektOgDatatyper End-----------------
@@ -447,34 +430,34 @@ Sub Kodelister(innrykk,element,pakke)
 	dim tag as EA.TaggedValue
 	dim utvekslingsalias, codeListUrl, asdict, elementnavn, attDef
 	asdict = false
-	call adocInsertAvsnittSkille
-	call adocInsertBreak
+	call skrivTekst(adocAvsnittSkille( ))
+	call skrivTekst(adocBreak())
 	 
-	call adocInsertAvsnittSkille
-	call adocInsertBokmerke(element)	
+	call skrivTekst(adocAvsnittSkille( ))
+	call skrivTekst(adocBokmerke(element)	)
 
 	elementnavn = stereotypeNavn(element)
 	if innrykk = "=====" then
-		call adocSkrivOverskift(innrykk, pakke.Name & "::" & elementnavn)
+		call skrivTekst(adocOverskrift(innrykk, pakke.Name & "::" & elementnavn) )
 	else
-		call adocSkrivOverskift(innrykk & "=", elementnavn)
+		call skrivTekst(adocOverskrift(innrykk & "=", elementnavn) )
 	end if
 	
-''	Session.Output(innrykk&"= «"&element.Stereotype&"» "&element.Name&"")
-'	call adocSkrivOverskift(innrykk & "=", stereotypeNavn(element) & "")
+''	Call skrivTekst(innrykk&"= «"&element.Stereotype&"» "&element.Name&"")
+'	call skrivTekst(adocOverskrift(innrykk & "=", stereotypeNavn(element) & "") )
 
-	Call adocSkrivDefinisjon( element)
-	call adocInsertAvsnittSkille
+	Call skrivTekst(adocDefinisjonsAvsnitt( element) )
+	call skrivTekst(adocAvsnittSkille( ))
 
 	if element.TaggedValues.Count > 0 then
-		Call adocDiskretOverskrift(innrykk, "Profilparametre i tagged values")
+		call skrivTekst(  adocDiskretOverskrift(innrykk, "Profilparametre i tagged values"))
 		
-		Call adocStartTabell("20,80")
+		Call skrivTekst( adocTabellstart("20,80", "") )
 		for each tag in element.TaggedValues								
 			if tag.Value = "" then
 			elseif tag.Name = "persistence" or tag.Name = "SOSI_melding" or LCase(tag.Name) = "sosi_bildeavmodellelement" then
 			else
-				Call adocTabellRad( tag.Name, tag.Value)
+				Call skrivTekst(adocTabellRad( tag.Name, tag.Value) )
 			end if
 		next
 		call adocAvsluttTabell
@@ -485,12 +468,12 @@ Sub Kodelister(innrykk,element,pakke)
 			
 			if LCase(tag.Name) = "sosi_bildeavmodellelement" and tag.Value <> "" then
 ''''				diagCounter = diagCounter + 1
-				call adocInsertBreak
+				call skrivTekst(adocBreak())
 				
 				tekst = "Illustrasjon av kodeliste: " & element.Name
 				bilde = tag.Value
 				alternativbildetekst = "Illustrasjon av hva kodelisten " & element.Name & " kan inneholde."
-				call adocSkrivBildeTekst(tekst, bilde, alternativbildetekst)
+				call skrivTekst(adocBildeTekst(tekst, bilde, alternativbildetekst) )
 			end if
 			if LCase(tag.Name) = "codelist" and tag.Value <> "" then
 				codeListUrl = tag.Value
@@ -499,13 +482,13 @@ Sub Kodelister(innrykk,element,pakke)
 	end if
 
 '	if codeListUrl <> "" and asdict then
-'		Session.Output("Koder fra ekstern kodeliste kan hentes fra register: "&codeListUrl&"")	
-'		Session.Output(" ")
+'		skrivTekst("Koder fra ekstern kodeliste kan hentes fra register: " & codeListUrl & "")	
+'		skrivTekst(" ")
 '	end if
 
 
 	if element.Attributes.Count > 0 then
-		Call adocDiskretOverskrift(innrykk, "Koder i modellen")
+		call skrivTekst(  adocDiskretOverskrift(innrykk, "Koder i modellen"))
 	end if
 	utvekslingsalias = false
 	for each att in element.Attributes
@@ -515,8 +498,8 @@ Sub Kodelister(innrykk,element,pakke)
 	next
 	if element.Attributes.Count > 0 then
 		if utvekslingsalias then
-			Call adocStartTabell("25,60,15")
-			Call adocTabellOverskrift3( "Kodenavn:", "Definisjon:", "Utvekslingsalias:" )
+			Call skrivTekst( adocTabellstart("25,60,15", "") )
+			Call skrivTekst(adocTabellOverskrift3( "Kodenavn:", "Definisjon:", "Utvekslingsalias:" ) )
 			for each att in element.Attributes
 			
 '				if att.Default <> "" then
@@ -524,17 +507,17 @@ Sub Kodelister(innrykk,element,pakke)
 '				else
 '					attDef = " "
 '				end if
-'				Call adocTabellRad3( att.Name, getCleanDefinition(att.Notes), attDef)
-				Call adocTabellRad3( att.Name, getCleanDefinition(att.Notes), att.Default)
+'				Call skrivTekst(adocTabellRad3( att.Name, getCleanDefinition(att.Notes), attDef) )
+				Call skrivTekst(adocTabellRad3( att.Name, getCleanDefinition(att.Notes), att.Default) )
 				
 				call attrbilde(att,"kodelistekode")
 			next
 		else
-			Call adocStartTabell("20,80")
-			Call adocTabellOverskrift( "Navn:", "Definisjon:" )
+			Call skrivTekst( adocTabellstart("20,80", "") )
+			Call skrivTekst(adocTabellOverskrift( "Navn:", "Definisjon:" ) )
 			
 			for each att in element.Attributes
-				Call adocTabellRad( att.Name, getCleanDefinition(att.Notes) )    
+				Call skrivTekst(adocTabellRad( att.Name, getCleanDefinition(att.Notes) )    )
 
 				call attrbilde(att,"kodelistekode")
 			next
@@ -584,8 +567,8 @@ end sub
 sub skrivManglendeOverskrift( overskrift, innrykk, overskriftFerdig)
 	'' skriver ut en overskift dersom den ikke er skrevet ut tidligere
 	if overskriftFerdig = false then
-		call adocInsertAvsnittSkille
-		Call adocDiskretOverskrift(innrykk, overskrift)
+		call skrivTekst(adocAvsnittSkille( ))
+		call skrivTekst(  adocDiskretOverskrift(innrykk, overskrift))
 		overskriftFerdig = true
 	end if
 end sub
@@ -595,15 +578,15 @@ sub skrivRelasjon( connector, currentEnd, targetEnd, target)
 	Dim textVar, linkVar, referanse
 	DIM conType
 
-	Call adocStartTabell("20,80")						
-	Call adocTabellOverskrift( "Rollenavn:", targetEnd.Role ) 
+	Call skrivTekst( adocTabellstart("20,80", "")	)					
+	Call skrivTekst(adocTabellOverskrift( "Rollenavn:", targetEnd.Role ) )
 
 ''    exit sub
 	If targetEnd.RoleNote <> "" Then
-		Call adocTabellRad( "Definisjon:", getCleanDefinition(targetEnd.RoleNote) )
+		Call skrivTekst(adocTabellRad( "Definisjon:", getCleanDefinition(targetEnd.RoleNote) )  )
 	End If
 	If targetEnd.Cardinality <> "" Then
-		Call adocTabellRad( "Multiplisitet:", "[" & targetEnd.Cardinality & "]" )     '''' tekstformat
+		Call skrivTekst(adocTabellRad( "Multiplisitet:", "[" & targetEnd.Cardinality & "]" )   )  '''' tekstformat
 	End If
 	If currentEnd.Aggregation <> 0 Then
 		if currentEnd.Aggregation = 2 then
@@ -611,10 +594,10 @@ sub skrivRelasjon( connector, currentEnd, targetEnd, target)
 		else
 			conType = "Aggregering " & connector.Type
 		end if
-		Call adocTabellRad( "Assosiasjonstype:", conType)
+		Call skrivTekst(adocTabellRad( "Assosiasjonstype:", conType) )
 	End If
 	If connector.Name <> "" Then
-		Call adocTabellRad( "Assosiasjonsnavn:", connector.Name )
+		Call skrivTekst(adocTabellRad( "Assosiasjonsnavn:", connector.Name ) )
 	End If
 
 	textVar = "Til klasse"
@@ -626,17 +609,17 @@ sub skrivRelasjon( connector, currentEnd, targetEnd, target)
 		textVar = "Til klasse:" 
 	End If
 	
-	Call adocTabellRad( textVar, targetLink( target) )
+	Call skrivTekst(adocTabellRad( textVar, targetLink( target) ) )
 
 	if false then
 		If currentEnd.Role <> "" Then
-			Call adocTabellRad( "Fra rolle:", currentEnd.Role )
+			Call skrivTekst(adocTabellRad( "Fra rolle:", currentEnd.Role ) )
 		End If
 		If currentEnd.RoleNote <> "" Then
-			Call adocTabellRad( "Fra rolle definisjon:", getCleanDefinition(currentEnd.RoleNote) )
+			Call skrivTekst(adocTabellRad( "Fra rolle definisjon:", getCleanDefinition(currentEnd.RoleNote) ) )
 		End If
 		If currentEnd.Cardinality <> "" Then
-			Call adocTabellRad( "Fra multiplisitet:", currentEnd.Cardinality )
+			Call skrivTekst(adocTabellRad( "Fra multiplisitet:", currentEnd.Cardinality )  )
 		End If
 	End If
 	
@@ -653,22 +636,22 @@ end sub
 sub Operasjoner(innrykk,element)
 	Dim meth as EA.Method
 
-	call adocInsertAvsnittSkille
-	Call adocDiskretOverskrift(innrykk, "Operasjoner")
+	call skrivTekst(adocAvsnittSkille( ))
+	call skrivTekst(  adocDiskretOverskrift(innrykk, "Operasjoner"))
 						
 	For Each meth In element.Methods
-		Call adocStartTabell("20,80")
+		Call skrivTekst( adocTabellstart("20,80", "") )
 		
-		Call adocTabellOverskrift( "Navn:", meth.Name )
-		Call adocTabellRad( "Beskrivelse:", getCleanDefinition(meth.Notes) )
+		Call skrivTekst(adocTabellOverskrift( "Navn:", meth.Name ) )
+		Call skrivTekst(adocTabellRad( "Beskrivelse:", getCleanDefinition(meth.Notes) ) )
 
 ''''''''''''''''''''''''''''''''''''''''''''''
 
-'''		Call adocTabellRad( "Stereotype:", meth.Stereotype)
-'''		Call adocTabellRad( "Retur type:", meth.ReturnType)
-'''		Call adocTabellRad( "Oppførsel:", meth.Behaviour)
+'''		Call skrivTekst(adocTabellRad( "Stereotype:", meth.Stereotype) )
+'''		Call skrivTekst(adocTabellRad( "Retur type:", meth.ReturnType) )
+'''		Call skrivTekst(adocTabellRad( "Oppførsel:", meth.Behaviour) )
 
-		adocAvsluttTabell
+		call adocAvsluttTabell
 	Next
 
 end sub
@@ -679,28 +662,25 @@ end sub
 sub Restriksjoner(innrykk,element)
 	Dim constr as EA.Constraint
 
-	call adocInsertAvsnittSkille
-	Call adocDiskretOverskrift(innrykk, "Restriksjoner")
+	call skrivTekst(adocAvsnittSkille( ))
+	call skrivTekst(  adocDiskretOverskrift(innrykk, "Restriksjoner"))
 						
 	For Each constr In element.Constraints
-		Call adocStartTabell("20,80")
+		Call skrivTekst( adocTabellstart("20,80", "") )
 		
-		Call adocTabellOverskrift( "Navn:", Trim(constr.Name) )
-		Call adocTabellRad( "Beskrivelse:", getCleanRestriction(constr.Notes) )
+		Call skrivTekst(adocTabellOverskrift( "Navn:", Trim(constr.Name) ) )
+		Call skrivTekst(adocTabellRad( "Beskrivelse:", getCleanRestriction(constr.Notes) ) )
 		
 '''''''''''''''''
-'''		Call adocTabellRad( "Type:", constr.Type)
-'''		Call adocTabellRad( "Status:", constr.Status)
-'''		Call adocTabellRad( "Vekt:", constr.Weight)
+'''		Call skrivTekst(adocTabellRad( "Type:", constr.Type) )
+'''		Call skrivTekst(adocTabellRad( "Status:", constr.Status) )
+'''		Call skrivTekst(adocTabellRad( "Vekt:", constr.Weight) )
 
 		call adocAvsluttTabell
 	Next
 
 end sub
 '-----------------Restriksjoner End-----------------
-
-
-'''  --------   hjelperutiner flytta ned til slutten av fila ....  -------------
 
 
 '------------------------------------------------------------START-------------------------------------------------------------------------------------------
@@ -1023,7 +1003,11 @@ function bounds( att)
 end function
 
 function tekstformatStereotype( stereotype)
-	tekstformatStereotype = "«" & stereotype & "» "
+	if stereotype <> "" then 
+		tekstformatStereotype = "«" & stereotype & "» "
+	else
+		tekstformatStereotype = ""
+	end if
 end function
 
 function stereotypeNavn( element)
@@ -1033,143 +1017,189 @@ end function
 ' ----------  	Funksjoner og rutiner for adoc-kode  -------------
 ' *** Det gjenstår å rydde opp og forenkle
 
-''' --- Asciidoc for dokumnetoppdeling
+''' --- Asciidoc-rutiner for dokumentoppdeling
 '''
 function adocPageBreak()
 	adocPageBreak = "<<<"
 end function
-sub adocInsertPageBreak
-	Session.Output(adocPageBreak())
-end sub
 
 function adocBreak()
 	adocBreak = "'''"
 end function
-sub adocInsertBreak
-	Session.Output(adocBreak())
-end sub
 
 function adocAvsnittSkille( )
 	adocAvsnittSkille = " "
 end function
-sub adocInsertAvsnittSkille
-	Session.Output(adocAvsnittSkille( ))
-end sub
 
 function adocLinjeskift( )
 	adocLinjeskift = " +"
 end function
-sub adocInsertLinjeskift
-	Session.Output(adocLinjeskift( ))
-end sub
+
 
 ''' --- Ascidoc for overskrifter
 '''
-sub adocSkrivOverskift(innrykk, overskrift)
-	skrivTekstlinje(innrykk & " " & overskrift)
-end sub
+function adocOverskrift(innrykk, overskrift)
+	adocOverskrift = innrykk & " " & overskrift
+end function
 
-sub adocStorDiskretOverskrift(innrykk, overskrift)
-''  Skriver asciidoc-kode for en stor diskret overskrift
-''  Med stor med at den skal innledes med et linjeskift og være ett nivå lavere enn gjeldende nivå.
+
+function adocStorDiskretOverskrift(innrykk, overskrift)
+''  Returnerer asciidoc-kode for en stor diskret overskrift
+''  Med stor menes at den skal innledes med et linjeskift og være ett nivå lavere enn gjeldende nivå.
 ''  Med diskret menees at den ikke skal vises i innholdsfortegnelsen
 ''
-	skrivTekstlinje( adocAvsnittSkille())
-	skrivTekstlinje("[discrete]")
-	skrivTekstlinje(innrykk & "= "  & overskrift)
-end sub
+	dim res(2) 
+	res(0) = adocAvsnittSkille()
+	res(1) = "[discrete]"
+	res(2) = innrykk & "= " & overskrift
+	adocStorDiskretOverskrift = res
+end function
 
-sub adocDiskretOverskrift(innrykk, overskrift)
-''  Skriver asciidoc-kode for en liten diskret overskrift
+function adocDiskretOverskrift(innrykk, overskrift)
+''  Returnerer asciidoc-kode for en liten diskret overskrift
 ''  Med liten med at den skal være to nivå lavere enn gjeldende nivå
 ''  Med diskret menees at den ikke skal vises i innholdsfortegnelsen
 ''	
-	skrivTekstlinje("[discrete]")
-'''	skrivTekstlinje(innrykk & "== " & overskrift)  'Et lite HACK or å redusere et for langt innrykk
-	skrivTekstlinje(innrykk & "= " & overskrift)
-end sub
+	dim res(1)
+	res(0) = "[discrete]"
+'''	res(1) = innrykk & "== " & overskrift  'Et lite HACK or å redusere et for langt innrykk
+	res(1) = innrykk & "= " & overskrift
+	adocDiskretOverskrift = res
+end function
 
-''' --- Ascidoc for linker og referanser
+
+''' --- Ascidoc-funksjoner for linker og referanser
 '''
 function adocBokmerke(element)
 	adocBokmerke = "[[" & LCase(element.Name) & "]]"
 end function
-sub adocInsertBokmerke(element)
-	skrivTekstlinje(adocBokmerke(element))
-end sub
 
 function targetLink( target)
 	targetLink = adocLink( target.Name, stereotypeNavn(target) )
 end function
 
-function adocTypeLink( att, typ)
-''	adocTypeLink = "<<" & LCase(att.Type) & "," & typ & ">>"  ''' adoc-syntaks for en link
-	adocTypeLink = adocLink( att.Type, typ )
-end function
+'function typeLink( att, typ)
+''	typeLink = "<<" & LCase(att.Type) & "," & typ & ">>"  ''' adoc-syntaks for en link
+'	typeLink = adocLink( att.Type, typ )
+'end function
 
 function adocLink( link, tekst)
 	adocLink = "<<" & LCase(link) & ", " & tekst & ">>"  
 end function
 
-''' --- Ascidoc for tabeller
+''' --- Asciidoc for tabeller
 '''
 function adocTabellavslutning()
 ''  Returnrer asciidoc-kode for å avslutte en tabell
 	adocTabellavslutning = "|==="
 end function
-
-sub adocAvsluttTabell
+SUB adocAvsluttTabell
 ''  Skriver asciidoc-kode for å avslutte en tabell
-	Session.Output(adocTabellavslutning())
+	call skrivTekst( adocTabellavslutning() )
+END SUB
+
+function appendArray( ByVal array, tillegg)
+	dim i, start
+	start = UBound(array) + 1
+	if isArray(tillegg) Then
+		REDIM preserve array(start + UBound(tillegg) )
+		for i = 0 to UBound(tillegg) 
+			array(start + i) = tillegg(i)
+		next
+	else 
+		REDIM preserve array(start )
+		array(start) = tillegg
+	end if
+	appendArray = array
+end function
+
+function adocTabellstart( kolonneBredder, overskrift )
+''  Returnerer asciidoc-kode for å opprette en tabell med overskrift og angitte kolonnebredder
+	dim res(), start, i
+	
+	if isArray(overskrift) then   
+		start = ubound(overskrift)  
+		redim res(start+2)
+		for i = 0 to start
+			res(i) = overskrift(i)
+		next
+		start = start + 1
+	elseif overskrift <> "" then
+		redim res(2)
+		res(0) = overskrift
+		start = 1
+	else
+		start = 0
+		redim res(1)
+	end if
+
+	res(start)   = "[cols=""" & kolonneBredder & """]"
+	res(start+1) = "|==="
+
+	adocTabellstart = res
+end function
+
+sub skrivTabell(tabell)
+	call skrivTekst( tabell)
+	call skrivTekst( adocTabellavslutning() )
 end sub
 
-sub adocStartTabell( kolonneBredder)
-''  Skriver asciidoc-kode for å opprette en tabell med angitte kolonnebredder
-	Session.Output("[cols=""" & kolonneBredder & """]")
-	Session.Output("|===")
+sub fullforTabell(overskrift, tabell)
+	call skrivTekst( overskrift)
+	call skrivTekst( tabell)
+	call skrivTekst( adocTabellavslutning() )
 end sub
 
-sub adocTabellOverskrift( parameter, verdi)
-    Call adocTabellRad( adocBold(parameter), adocBold(verdi) )
-end sub
+function adocTabellOverskrift( parameter, verdi)
+    adocTabellOverskrift = adocTabellRad( adocBold(parameter), adocBold(verdi) ) 
+end function
 
-sub adocTabellOverskrift3( parameter, verdi, ekstra)
-    Call adocTabellRad3( adocBold(parameter), adocBold(verdi), adocBold(ekstra) )
-end sub
+function adocTabellOverskrift3( parameter, verdi, ekstra)
+    adocTabellOverskrift3 = adocTabellRad3( adocBold(parameter), adocBold(verdi), adocBold(ekstra) ) 
+end function
 
-sub adocTabellRad( parameter, verdi)
-''  Skriver asciidoc-kode for å skive ut en rad i en tabell med to kolonner
-	Session.Output("|" & parameter & " ")
-	Session.Output("|" & verdi & " ")
-''	Session.Output(" ")
-end sub
+function adocTabellCelle( innhold)
+	adocTabellCelle = "|" & innhold & " "
+end function
 
-sub adocTabellRad3( parameter, verdi, ekstra)
-''  Skriver asciidoc-kode for å skive ut en rad i en tabell med tre kolonner
-''	Session.Output("|" & parameter & ": ")
-	Session.Output("|" & parameter & " ")
-	Session.Output("|" & verdi & " ")
-	Session.Output("|" & ekstra & " ")
-''	Session.Output(" ")
-end sub
+function adocTabellRad( parameter, verdi)
+''  Returnerer asciidoc-kode for å skive ut en rad i en tabell med to kolonner
+	dim res()
+	redim res(1)
+	res(0) = "|" & parameter & " "
+	res(1) = "|" & verdi & " "
+''	redim preserve res(2)	
+''	res(2) = " "
+	adocTabellRad = res
+end function
+
+
+function adocTabellRad3( parameter, verdi, ekstra)
+''  Returnerer asciidoc-kode for å skive ut en rad i en tabell med to kolonner
+	dim res()
+	redim res(2)
+	res(0) = "|" & parameter & " "
+	res(1) = "|" & verdi & " "
+	res(2) = "|" & ekstra & " "
+''	redim preserve res(3)	
+''	res(3) = " "
+	adocTabellRad3 = res
+end function
+
 
 
 ''' Asciidoc for bilder
 '''
-function adocBildeTekst(tekst)
-	adocBildeTekst = "." & tekst 
+function adocBildeTekst(tekst, bilde, alternativbildetekst)
+	adocBildeTekst = array("." & tekst , adocBildeLink(bilde, alternativbildetekst) )
 end function
 
 function adocBildeLink(bilde, alternativbildetekst)
 	adocBildeLink = "image::" & bilde & "[link=" & bilde & ", alt=""" & alternativbildetekst & """]"
 end function
 
-sub	adocSkrivBildeTekst(tekst, bilde, alternativbildetekst)
-	Session.Output(adocBildeTekst(tekst))
-	Session.Output(adocBildeLink(bilde, alternativbildetekst))
-end sub
 
-''' Ascidoc for tektformatering
+''' Ascidoc-funksjoner for tekstformatering
 '''
 function adocBold( tekst)
 ''	Returnerer asciidoc-kode for feit/bold tekst
@@ -1188,25 +1218,31 @@ function adocDefinisjonsAvsnitt( element)
 	adocDefinisjonsAvsnitt = adocBold("Definisjon:") & " " & getCleanDefinition(element.Notes)
 end function 
 
-sub adocSkrivDefinisjon( element)
-	skrivTekstlinje(adocDefinisjonsAvsnitt( element))
-end sub
 	
-	
-' ----------  	Rutiner for utskrift av tekst til output
+' ----------  	Rutiner for utskrift av tekst til output    ----------------
 
 sub skrivTekstlinje(tekst)
-	Session.Output(tekst)
+	if tekst <> "" then Session.Output(tekst)
 end sub
 
 sub skrivTekstblokk(tekstBlokk)
-	for each tekst in tekstblokk 
+	dim tekst
+	for each tekst in tekstBlokk 
 		Session.Output(tekst)
 	next
+end sub
+
+sub skrivTekst(tekst)
+	if isArray(tekst) then
+		call skrivTekstblokk(tekst)
+	else
+		call skrivTekstlinje(tekst)
+	end if 
 end sub
 
 '====================================================
 
 OnProjectBrowserScript
 
+'====================================================
 
