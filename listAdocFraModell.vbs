@@ -1,1212 +1,1762 @@
-Option Explicit
+// Start of UML-model
+<<<
+'''
+=== Pakke: Plan-5.0-Utkast
+*Definisjon:* modell for planer og planregister i henhold til plan- og bygningsloven av 2008 (pbl.) og pbl. 1985, samt Geodatalovens regler om arealbruk (INSPIRE). 
+I og med at eldre reguleringsplaner etter tidligere bygningslovgivning (bl.) fortsatt er juridisk bindende, omfattes disse også av standarden. 
 
-!INC Local Scripts.EAConstants-VBScript
-
-' Script Name: listAdocFraModell
-' Author: Tore Johnsen, Åsmund Tjora
-' Purpose: Generate documentation in AsciiDoc syntax
-' Original Date: 08.04.2021
-'
-' Version: 0.30 Date: 2022-07-04 Jostein Amlien: Lempa på rekkefølgekrav i hovedrutina, lagt til flere rutiner for Asciidoc-syntaks, formattert tekst og output, refaktorert Sub Relasjoner
-' Version: 0.29 Date: 2022-06-17 Jostein Amlien: Definert og tatt i bruk noen enkle funksjoner for Asciidoc-syntaks
-' Version: 0.28 Date: 2022-06-10 Kent Jonsrud: dersom diagrammer har beskrivelse så legges denne inn i alt=
-' Version: 0.27 Date: 2022-01-17 Kent Jonsrud: endra Alt= til alt= på alternative bildetekster
-' Version: 0.26 Date: 2021-12-15 Kent Jonsrud: retting av småfeil etter forrige retting
-' Version: 0.25 Date: 2021-12-14 Kent Jonsrud: skille ocl fra beskrivelse med linjeskift før --, og komma fjernes kun fra bildetekst
-' Version: 0.24 Date: 2021-12-09 Kent Jonsrud: AS på 2. nivå (===), FT og UP på nivåer under ned til 5. nivå (=====), tilpasset :toclevel: 4 og [discrete]
-' Version: 0.23 Date: 2021-12-08 Kent Jonsrud: AS på 3. nivå, FT og UP på samme nivå under (kan justeres på linje ca. 200)
-' Version: 0.22 Date: 2021-12-07 Kent Jonsrud: linjeskift i noter endres ikke lenger til blanke
-' Version: 0.21 Date: 2021-11-25 Kent Jonsrud: endra nøsting til å nøste kun fire nivå ned (AS(FT og UP(FT og UP og UP::FT og (UP/)UP2::FT etc.)))
-' Version: 0.20 Date: 2021-11-15 Kent Jonsrud: endra på Alt= , dobbeltparenteser, kun en lenke til ekstern kodeliste, nøsting av underpakker
-' Version: 0.19 Date: 2021-10-05 Kent Jonsrud: satt inn Alt= i alle image:
-' Version: 0.18 Date: 2021-09-28 Kent Jonsrud: bytta til eksplisitt skillelinje ("'''") og rydda vekk død kode
-' Version: 0.17 Date: 2021-09-28 Kent Jonsrud: tatt bort eksplisitt nummerering av figurer
-' Version: 0.16 Date: 2021-09-21 Kent Jonsrud: flyttet supertypen til slutt og laget hyperlinker til subtypene
-' Version: 0.15 Date: 2021-09-17 Kent Jonsrud: smårettinger
-' Version: 0.14 Date: 2021-09-16 Tore Johnsen/Kent Jonsrud: hyperlenker til egenskapenes typer innenfor modellen og absolutte lenker til basistyper
-' Version: 0.13 Date: 2021-09-10 Kent Jonsrud: smårettinger
-' Version: 0.12 Date: 2021-09-09 Kent Jonsrud: smårettinger, bedre angivelse av skille mellom klassene
-' Version: 0.11 Date: 2021-09-05 Kent Jonsrud: Assosiasjonsnavn, ikke hente eksterne koder, sideskift for pakker i pdf
-' Version: 0.10 Date: 2021-08-10 Kent Jonsrud: forbedra ledetekster
-' Version: 0.9 Date: 2021-08-08 Kent Jonsrud: skriver ut navn og beskrivelse på alle operasjoner på objekttyper og datatyper
-' Version: 0.8 Date: 2021-08-06 Kent Jonsrud: skriver ut alle restriksjoner på objekttyper og datatyper
-' Version: 0.7 Date: 2021-07-08 Kent Jonsrud: retta en feil ved utskrift av roller
-' Version: 0.6 Date: 2021-06-30 Kent Jonsrud: leser kodelister fra levende register
-' Version: 0.5 Date: 2021-06-29 Kent Jonsrud: error if role list is not shown
-' Date: 2021-06-24 Kent Jonsrud: endra skriptnavn fra AdocTest til listAdocFraModell
-' Version: 0.4 Date: 2021-06-14 Kent Jonsrud: case-insensitiv test på navnet på tagged value SOSI_bildeAvModellelement
-' Version: 0.3 Date: 2021-06-01 Kent Jonsrud: retta bildesti til app_img
-' Version: 0.2 Date: 2021-04-16 Kent Jonsrud: tagged value SOSI_bildeAvModellelement på pakker og klasser: verdien vises som ekstern sti til bilde
-' Date: 2021-04-15 Kent Jonsrud: diagrammer legges i underkatalog med navn enten verdien i tagged value SOSI_kortnavn eller img.
-' Date: 2021-04-09/14 Kent Jonsrud:  - tagged value lists come right after definition, on packages and classes - "Spesialisering av" changed to Supertype, no list of subtypes shown
-' - removed formatting in notes, except CRLF - show stereotype on attribute "Type" if present - roles shall have same simple look and structure as attributes
-' - Relasjoner changed to Roller, show only ends with role names (and navigable ?) - tagged values on CodeList classes, empty tags suppressed (suppress only those from the standard profile?), heading?
-' - simpler list for codelists with more than 1 code, three-column list when Defaults are used (Utvekslingsalias)
-'
-' TBD: tagged values on roles
-' TBD: fjerne komma og sette inn - for blanke i diagrammnavn for enklere_filnavn.png ?
-' TBD: show stereotype on Type DONE
-' TBD: show abstract on Type 
-' TBD: show navigable 
-' TBD: show association type 
-' TBD: output operations and constraints right after attributes and roles DONE
-' TBD: codes with tagged values
-' TBD: output info on associations if present
-' TBD: Hva med tagged values på koder?
-' TBD: if tV SOSI_bildeAvModellelement (på koder og egenskaper) -> Session.Output("image::"& tV &".png["& tV &"]")
-' TBD: special handling of classes that have tV with names like FKB-A etc. and are subtypes of feature types
-' TBD: write adoc and diagram files to a subfolder, ensure utf-8 in adoc (no &#229)
-'		==== «dataType» Matrikkelenhetreferanse
-'		Definisjon: Mulighet for &#229; koble matrikkelenhet til objekt i SSR for &#229; oppdatere bruksnavn i matrikkelen.
-' TBD: opprydding !!!
-'
-Dim imgfolder, imgparent
-''Dim diagCounter,figurcounter
-Dim imgFSO
-'
-' Project Browser Script main function
-Sub OnProjectBrowserScript()
-
-	Dim treeSelectedType
-	treeSelectedType = Repository.GetTreeSelectedItemType()
-
-	Select Case treeSelectedType
-
-		Case otPackage
-			Repository.EnsureOutputVisible "Script"
-			Repository.ClearOutput "Script"
-			' Code for when a package is selected
-''			diagCounter = 0
-''			figurcounter = 0
-			Dim innrykk
-			Dim thePackage As EA.Package
-			set thePackage = Repository.GetTreeSelectedObject()
-			imgfolder = "diagrammer"
-			Set imgFSO=CreateObject("Scripting.FileSystemObject")
-			imgparent = imgFSO.GetParentFolderName(Repository.ConnectionString())  & "\" & imgfolder
-			if not imgFSO.FolderExists(imgparent) then
-				imgFSO.CreateFolder imgparent
-			end if
-			Session.Output("// Start of UML-model")
-			innrykk = "==="
-			Call ListAsciiDoc(innrykk,thePackage)
-			Session.Output("// End of UML-model")
-		Case Else
-			' Error message
-			Session.Prompt "This script does not support items of this type.", promptOK
-
-	End Select
-	Set imgFSO = Nothing
-End Sub
-
-
-Sub ListAsciiDoc(innrykk,thePackage)
-
-	Dim element As EA.Element
-	dim tag as EA.TaggedValue
-	Dim diag As EA.Diagram
-	Dim projectclass As EA.Project
-	set projectclass = Repository.GetProjectInterface()
-	Dim listTags, innrykkLokal, bilde, bildetekst, alternativbildetekst
-	dim overskrift, diagramfil
-		
-	if thePackage.Element.Stereotype <> "" then
-		overskrift = "Pakke: " & tekstformatStereotype(thePackage.Element.Stereotype) & thePackage.Name
-	else
-		Call adocInsertPageBreak
-		Call adocInsertBreak
-		if innrykk = "=====" then
-			overskrift = "Underpakke: " & thePackage.Name
-		else
-			overskrift = "Pakke: " & thePackage.Name
-		end if
-
-	end if
-	Call adocSkrivOverskift( innrykk, overskrift)
-
-	Call adocSkrivDefinisjon( thePackage)
-
-'	if thePackage.element.TaggedValues.Count > 0 then
-'		listTags = false
-'		for each tag in thePackage.element.TaggedValues
-'			if tag.Value <> "" then	
-'				if tag.Name <> "persistence" and tag.Name <> "SOSI_melding" then
-'					if listTags = false then
-'						Call adocStorDiskretOverskrift(innrykk, "Profilparametre i tagged values")
-'						Call adocStartTabell("20,80")
-'						listTags = true
-'					end if
-'					Call adocTabellRad( tag.Name, tag.Value)
-'				end if
-'			end if
-'		next
-'		if listTags = true then
-'			call adocAvsluttTabell
-'		end if
-'	end if
-
-	listTags = false
-	for each tag in thePackage.element.TaggedValues
-		if tag.Value = "" then	
-		elseif tag.Name = "persistence" or tag.Name = "SOSI_melding" then
-		else
-			if listTags = false then
-				Call adocStorDiskretOverskrift(innrykk, "Profilparametre i tagged values")
-				Call adocStartTabell("20,80")
-				listTags = true
-			end if
-			Call adocTabellRad( tag.Name, tag.Value)
-		end if
-	next
-	if listTags = true then
-		call adocAvsluttTabell
-	end if
-
-'-----------------Diagram-----------------
-
-	for each tag in thePackage.element.TaggedValues
-		if LCase(tag.Name) = "sosi_bildeavmodellelement" and tag.Value <> "" then
-	'	if getPackageTaggedValue("SOSI_bildeAvModellelement") <> "" then
-			bilde = getPackageTaggedValue(thePackage,"SOSI_bildeAvModellelement") 
-			
-			if getPackageTaggedValue(thePackage,"SOSI_bildetekst") <> "" then 
-				bildetekst = getPackageTaggedValue(thePackage,"SOSI_bildetekst")
-			else
-				bildetekst = "Illustrasjon av pakke " & thePackage.Name & ""
-			end if
-			
-			if getPackageTaggedValue(thePackage,"SOSI_alternativbildetekst") <> "" then 
-				alternativbildetekst = getPackageTaggedValue(thePackage, "SOSI_alternativbildetekst")
-			else
-				alternativbildetekst = "Bildet viser en illustrasjon av innholdet i UML-pakken " & thePackage.Name & ". Alle detaljene kommer i teksten nedenfor."
-			end if
-			
-			call adocSkrivBildeTekst(bildetekst, bilde, alternativbildetekst)
-			call adocInsertAvsnittSkille
-		end if
-	next
-	
-	For Each diag In thePackage.Diagrams
-''''		diagCounter = diagCounter + 1
-		Call projectclass.PutDiagramImageToFile(diag.DiagramGUID, imgparent & "\" & diag.Name & ".png", 1)
-		Repository.CloseDiagram(diag.DiagramID)
-		call adocInsertAvsnittSkille
-		call adocInsertBreak
-		call adocInsertAvsnittSkille
-
-		if diag.Notes <> "" then
-			alternativbildetekst = diag.Notes
-		else
-			alternativbildetekst = "Diagram med navn " & diag.Name & " som viser UML-klasser beskrevet i teksten nedenfor."
-		end if
-		
-		diagramFil = imgfolder & "\" & diag.Name & ".png"
-		call adocSkrivBildeTekst(diag.Name, diagramFil, alternativbildetekst)
-	Next
-
-'-----------------Elementer----------------- 
-	dim uppStereo
-	For each element in thePackage.Elements
-		If Ucase(element.Stereotype) = "FEATURETYPE" OR Ucase(element.Stereotype) = "DATATYPE" OR Ucase(element.Stereotype) = "UNION"  Then
-			Call ObjektOgDatatyper(innrykk,element,thePackage)
-		End If
-
-		If Ucase(element.Stereotype) = "CODELIST" OR Ucase(element.Stereotype) = "ENUMERATION" OR element.Type = "Enumeration" Then
-			Call Kodelister(innrykk,element,thePackage)
-		End if
-	Next
-
-'----------------- Underpakker ----------------- 
-
-'	ALT 1 Underpakker flatt på samme nivå som Application Schema
-'	innrykkLokal = innrykk
-
-'	ALT 2 Nøsting av pakker ned til nivå 4 under Application Schema
-	if innrykk = "=====" then 
-		innrykkLokal = "====="
-	else
-		innrykkLokal = innrykk & "="
-	end if
-
-'	ALT 3 TBD Nøsting helt ned med utskrift av Pakke::Klasse (Pakke/Pakke2::Klasse TBD)
-'	innrykkLokal = innrykk & "="
-
-	dim pack as EA.Package
-	for each pack in thePackage.Packages
-		Call ListAsciiDoc(innrykkLokal,pack)
-	next
-
-'	Set imgFSO = Nothing
-end sub
-
-'-----------------ObjektOgDatatyper-----------------
-Sub ObjektOgDatatyper(innrykk,element,pakke)
-	Dim att As EA.Attribute
-	dim tag as EA.TaggedValue
-	Dim con As EA.Connector
-	Dim supplier As EA.Element
-	Dim client As EA.Element
-	Dim association
-	Dim aggregation
-	association = False
  
-	Dim numberSpecializations, numberGeneralizations, numberRealisations, elementnavn
-
-	Dim textVar, bilde, bildetekst, alternativbildetekst
-	dim externalPackage
-	Dim listTags
-	dim typ
-
-	call adocInsertAvsnittSkille
-	call adocInsertBreak
-	
-	call adocInsertAvsnittSkille
-
-	call adocInsertBokmerke(element)
-	elementnavn = stereotypeNavn(element) 
-
-	if element.Abstract = 1 then
-		elementnavn = adocKursiv( elementnavn & " (abstrakt)" )    '''' NYTT: gjort abstracte klasser kursiv
-	end if
-	if innrykk = "=====" then
-		call adocSkrivOverskift(innrykk, pakke.Name & "::" & elementnavn)
-	else
-		call adocSkrivOverskift(innrykk & "=", elementnavn)
-	end if
-	Call adocSkrivDefinisjon( element)
-	call adocInsertAvsnittSkille
-
-	for each tag in element.TaggedValues								
-		if tag.Value = "" then	
-		elseif tag.Name = "persistence" or tag.Name = "SOSI_melding" or LCase(tag.Name) = "sosi_bildeavmodellelement" then
-		else
-			if listTags = false then
-				Call adocDiskretOverskrift(innrykk, "Profilparametre i tagged values")
-				Call adocStartTabell("20,80")
-				listTags = true
-			end if
-			Call adocTabellRad( tag.Name, tag.Value)			
-		end if
-	next
-	if listTags = true then
-		call adocAvsluttTabell
-	end if
-	
-
-	
-	for each tag in element.TaggedValues								
-		if LCase(tag.Name) = "sosi_bildeavmodellelement" and tag.Value <> "" then
-''''			diagCounter = diagCounter + 1
-			bilde = getTaggedValue(element, "SOSI_bildeAvModellelement") 
-			
-			if getTaggedValue(element, "SOSI_bildetekst") <> "" then 
-				bildetekst = getTaggedValue(element,"SOSI_bildetekst")
-			else
-				bildetekst = "Illustrasjon av objekttype " & element.Name & ""
-			end if
-			
-			if getTaggedValue(element,"SOSI_alternativbildetekst") <> "" then 
-				alternativbildetekst = getTaggedValue(element, "SOSI_alternativbildetekst")
-			else
-'''				alternativbildetekst = "Bilde av et eksempel på objekttypen " & element.Name & ", eventuelt med påtegning av streker som viser hvor geometrien til objektet skal måles fra."
-				alternativbildetekst = "Bilde av et eksempel på objekttypen " & element.Name  '''' Tatt bort formuleringen om påtegning
-			end if
-			
-			call adocInsertAvsnittSkille
-			call adocInsertBreak
-			call adocSkrivBildeTekst(bildetekst, bilde, alternativbildetekst)
-			
-		end if
-	next
-
-	if element.Attributes.Count > 0 then
-		Call adocDiskretOverskrift(innrykk, "Egenskaper")
-		for each att in element.Attributes
-			Call adocStartTabell("20,80")
-			
-			Call adocTabellOverskrift( "Navn:", att.Name)
-			Call adocTabellRad( "Definisjon:", getCleanDefinition(att.Notes))
-			Call adocTabellRad( "Multiplisitet:", bounds(att))
-			if not att.Default = "" then
-				Call adocTabellRad( "Initialverdi:", att.Default)
-			end if
-			if not att.Visibility = "Public" then
-				Call adocTabellRad( "Visibilitet:", att.Visibility)
-			end if
-			
-			if att.ClassifierID <> 0 then
-				if isElement(att.ClassifierID) then
-					dim stereo
-					stereo = Repository.GetElementByID(att.ClassifierID).Stereotype
-					if stereo = "" then
-						typ = adocLink( att.Type, att.Type )
-					else
-						typ = adocLink( att.Type, tekstformatStereotype(stereo) & att.Type )
-					end if
-				else
-					typ = att.Type
-				end if
-			else
-				typ = "http://skjema.geonorge.no/SOSI/basistype/" & att.Type & "[" & att.Type & "]"		''' adoc-syntaks for en link
-			end if
-			Call adocTabellRad( "Type:", typ)
-
-			if att.TaggedValues.Count > 0 then
-				call adocTabellRad( "Profilparametre i tagged values: ", "")
-				for each tag in att.TaggedValues
-					call skrivTekstlinje(tag.Name& ": "&tag.Value & adocLinjeskift() )
-				next
-			end if
-			
-			call adocAvsluttTabell
-		next
-	end if
-
-
-	call Relasjoner(innrykk,element)
-
-	if element.Methods.Count > 0 then
-		call Operasjoner(innrykk,element)
-	end if
-
-	if element.Constraints.Count > 0 then
-		call Restriksjoner(innrykk,element)
-	end if
-
-' Supertype
-	numberSpecializations = 0
-	For Each con In element.Connectors
-		set supplier = Repository.GetElementByID(con.SupplierID)
-		If con.Type = "Generalization" And supplier.ElementID <> element.ElementID Then
-			if numberSpecializations = 0 then
-				call adocInsertAvsnittSkille
-				Call adocDiskretOverskrift(innrykk, "Arv og realiseringer")
-				Call adocStartTabell("20,80")
-			end if
-			numberSpecializations = numberSpecializations + 1
-			call adocTabellRad("Supertype: ", targetLink(supplier))
-			call adocInsertAvsnittSkille
-		End If
-	Next
-
-
-' Spesialiseringer av klassen
-	numberGeneralizations = 0
-	For Each con In element.Connectors
-		If con.Type = "Generalization" Then
-			set supplier = Repository.GetElementByID(con.SupplierID)
-			set client = Repository.GetElementByID(con.ClientID)
-			If supplier.ElementID = element.ElementID then 'dette er en generalisering
-				if numberSpecializations = 0 and numberGeneralizations = 0 then
-					call adocInsertAvsnittSkille
-					Call adocDiskretOverskrift(innrykk, "Arv og realiseringer")
-					Call adocStartTabell("20,80")
-				end if		
-				If numberGeneralizations = 0 Then
-					call adocTabellRad("Subtyper:", "")
-				End If
-				call skrivTekstlinje(targetLink(client) & adocLinjeskift() )
-				numberGeneralizations = numberGeneralizations + 1
-			End If
-		End If
-	Next
-
-	For Each con In element.Connectors  
-		numberRealisations = 0
-'Må forbedres i framtidige versjoner dersom denne skal med 
-'- full sti (opp til applicationSchema eller øverste pakke under "Model") til pakke som inneholder klassen som realiseres
-		set supplier = Repository.GetElementByID(con.SupplierID)
-		If con.Type = "Realisation" And supplier.ElementID <> element.ElementID Then
-			if numberSpecializations = 0 and numberGeneralizations = 0 and numberRealisations = 0 then
-				Call adocDiskretOverskrift(innrykk, "Arv og realiseringer")
-				Call adocStartTabell("20,80")
-			end if		
-			set externalPackage = Repository.GetPackageByID(supplier.PackageID)
-			textVar=getPath(externalPackage)
-			if numberRealisations = 0 Then
-				call adocTabellRad("Realisering av: ", "")
-				numberRealisations = numberRealisations + 1
-			end if
-			call skrivTekstlinje( textVar & "::" & stereotypeNavn(supplier) & adocLinjeskift())
-			call adocInsertAvsnittSkille
-			numberRealisations = numberRealisations + 1
-		end if
-	next
-
-	If numberSpecializations + numberGeneralizations + numberRealisations > 0 then
-		call adocAvsluttTabell
-	End If
-
-End sub
-'-----------------ObjektOgDatatyper End-----------------
-
-
-'-----------------CodeList-----------------
-Sub Kodelister(innrykk,element,pakke)
-	Dim att As EA.Attribute
-	dim tag as EA.TaggedValue
-	dim utvekslingsalias, codeListUrl, asdict, elementnavn, attDef
-	asdict = false
-	call adocInsertAvsnittSkille
-	call adocInsertBreak
-	 
-	call adocInsertAvsnittSkille
-	call adocInsertBokmerke(element)	
-
-	elementnavn = stereotypeNavn(element)
-	if innrykk = "=====" then
-		call adocSkrivOverskift(innrykk, pakke.Name & "::" & elementnavn)
-	else
-		call adocSkrivOverskift(innrykk & "=", elementnavn)
-	end if
-	
-''	Session.Output(innrykk&"= «"&element.Stereotype&"» "&element.Name&"")
-'	call adocSkrivOverskift(innrykk & "=", stereotypeNavn(element) & "")
-
-	Call adocSkrivDefinisjon( element)
-	call adocInsertAvsnittSkille
-
-	if element.TaggedValues.Count > 0 then
-		Call adocDiskretOverskrift(innrykk, "Profilparametre i tagged values")
-		
-		Call adocStartTabell("20,80")
-		for each tag in element.TaggedValues								
-			if tag.Value = "" then
-			elseif tag.Name = "persistence" or tag.Name = "SOSI_melding" or LCase(tag.Name) = "sosi_bildeavmodellelement" then
-			else
-				Call adocTabellRad( tag.Name, tag.Value)
-			end if
-		next
-		call adocAvsluttTabell
-			
-		codeListUrl = ""	
-		for each tag in element.TaggedValues								
-			if LCase(tag.Name) = "asdictionary" and tag.Value = "true" then asdict = true
-			
-			if LCase(tag.Name) = "sosi_bildeavmodellelement" and tag.Value <> "" then
-''''				diagCounter = diagCounter + 1
-				call adocInsertBreak
-				
-				tekst = "Illustrasjon av kodeliste: " & element.Name
-				bilde = tag.Value
-				alternativbildetekst = "Illustrasjon av hva kodelisten " & element.Name & " kan inneholde."
-				call adocSkrivBildeTekst(tekst, bilde, alternativbildetekst)
-			end if
-			if LCase(tag.Name) = "codelist" and tag.Value <> "" then
-				codeListUrl = tag.Value
-			end if
-		next
-	end if
-
-'	if codeListUrl <> "" and asdict then
-'		Session.Output("Koder fra ekstern kodeliste kan hentes fra register: "&codeListUrl&"")	
-'		Session.Output(" ")
-'	end if
-
-
-	if element.Attributes.Count > 0 then
-		Call adocDiskretOverskrift(innrykk, "Koder i modellen")
-	end if
-	utvekslingsalias = false
-	for each att in element.Attributes
-		if att.Default <> "" then
-			utvekslingsalias = true
-		end if
-	next
-	if element.Attributes.Count > 0 then
-		if utvekslingsalias then
-			Call adocStartTabell("25,60,15")
-			Call adocTabellOverskrift3( "Kodenavn:", "Definisjon:", "Utvekslingsalias:" )
-			for each att in element.Attributes
-			
-'				if att.Default <> "" then
-'					attDef = att.Default
-'				else
-'					attDef = " "
-'				end if
-'				Call adocTabellRad3( att.Name, getCleanDefinition(att.Notes), attDef)
-				Call adocTabellRad3( att.Name, getCleanDefinition(att.Notes), att.Default)
-				
-				call attrbilde(att,"kodelistekode")
-			next
-		else
-			Call adocStartTabell("20,80")
-			Call adocTabellOverskrift( "Navn:", "Definisjon:" )
-			
-			for each att in element.Attributes
-				Call adocTabellRad( att.Name, getCleanDefinition(att.Notes) )    
-
-				call attrbilde(att,"kodelistekode")
-			next
-
-		end if
-		call adocAvsluttTabell
-
-	end if
-End sub
-'-----------------CodeList End-----------------
-
-
-'-----------------Relasjoner-----------------
-sub Relasjoner(innrykk,element)
-	Dim con
-	Dim supplier
-	Dim client
-	Dim skrivRoller
-
-	skrivRoller = false
-
-'assosiasjoner
-' skriv ut roller - sortert etter tagged value sequenceNumber TBD
-
-	For Each con In element.Connectors
-		If con.Type = "Association" or con.Type = "Aggregation" Then
-			set supplier = Repository.GetElementByID(con.SupplierID)
-			set client = Repository.GetElementByID(con.ClientID)
-			
-			If element.elementID = supplier.elementID and con.ClientEnd.Role <> ""  Then 
-				'dette elementet er suppliersiden - implisitt at fraklasse er denne klassen
-				Call skrivManglendeOverskrift( "Roller", innrykk, skrivRoller)
-				Call skrivRelasjon( con, con.SupplierEnd, con.ClientEnd, client) 
-
-			ElseIf element.elementID = client.elementID and con.SupplierEnd.Role <> "" Then
-				'dette elementet er clientsiden, (rollen er på target)
-				Call skrivManglendeOverskrift( "Roller", innrykk, skrivRoller)
-				Call skrivRelasjon( con, con.ClientEnd, con.SupplierEnd, supplier) 
-				
-			End If
-			
-		End If
-	Next
-
-end sub
-
-sub skrivManglendeOverskrift( overskrift, innrykk, overskriftFerdig)
-	'' skriver ut en overskift dersom den ikke er skrevet ut tidligere
-	if overskriftFerdig = false then
-		call adocInsertAvsnittSkille
-		Call adocDiskretOverskrift(innrykk, overskrift)
-		overskriftFerdig = true
-	end if
-end sub
-
-sub skrivRelasjon( connector, currentEnd, targetEnd, target)
-
-	Dim textVar, linkVar, referanse
-	DIM conType
-
-	Call adocStartTabell("20,80")						
-	Call adocTabellOverskrift( "Rollenavn:", targetEnd.Role ) 
-
-''    exit sub
-	If targetEnd.RoleNote <> "" Then
-		Call adocTabellRad( "Definisjon:", getCleanDefinition(targetEnd.RoleNote) )
-	End If
-	If targetEnd.Cardinality <> "" Then
-		Call adocTabellRad( "Multiplisitet:", "[" & targetEnd.Cardinality & "]" )     '''' tekstformat
-	End If
-	If currentEnd.Aggregation <> 0 Then
-		if currentEnd.Aggregation = 2 then
-			conType = "Komposisjon " & connector.Type
-		else
-			conType = "Aggregering " & connector.Type
-		end if
-		Call adocTabellRad( "Assosiasjonstype:", conType)
-	End If
-	If connector.Name <> "" Then
-		Call adocTabellRad( "Assosiasjonsnavn:", connector.Name )
-	End If
-
-	textVar = "Til klasse"
-	If targetEnd.Navigable = "Navigable" Then 'Legg til info om klassen er navigerbar eller spesifisert ikke-navigerbar.
-		textVar = "Til klasse"
-	ElseIf targetEnd.Navigable = "Non-Navigable" Then 
-		textVar = "Til klasse " + adocKursiv("(ikke navigerbar):") 
-	Else 
-		textVar = "Til klasse:" 
-	End If
-	
-	Call adocTabellRad( textVar, targetLink( target) )
-
-	if false then
-		If currentEnd.Role <> "" Then
-			Call adocTabellRad( "Fra rolle:", currentEnd.Role )
-		End If
-		If currentEnd.RoleNote <> "" Then
-			Call adocTabellRad( "Fra rolle definisjon:", getCleanDefinition(currentEnd.RoleNote) )
-		End If
-		If currentEnd.Cardinality <> "" Then
-			Call adocTabellRad( "Fra multiplisitet:", currentEnd.Cardinality )
-		End If
-	End If
-	
-	call adocAvsluttTabell	
-
-end sub
-
-
-'-----------------Relasjoner End-----------------
-
-
-
-'-----------------Operasjoner-----------------
-sub Operasjoner(innrykk,element)
-	Dim meth as EA.Method
-
-	call adocInsertAvsnittSkille
-	Call adocDiskretOverskrift(innrykk, "Operasjoner")
-						
-	For Each meth In element.Methods
-		Call adocStartTabell("20,80")
-		
-		Call adocTabellOverskrift( "Navn:", meth.Name )
-		Call adocTabellRad( "Beskrivelse:", getCleanDefinition(meth.Notes) )
-
-''''''''''''''''''''''''''''''''''''''''''''''
-
-'''		Call adocTabellRad( "Stereotype:", meth.Stereotype)
-'''		Call adocTabellRad( "Retur type:", meth.ReturnType)
-'''		Call adocTabellRad( "Oppførsel:", meth.Behaviour)
-
-		adocAvsluttTabell
-	Next
-
-end sub
-'-----------------Operasjoner End-----------------
-
-
-'-----------------Restriksjoner-----------------
-sub Restriksjoner(innrykk,element)
-	Dim constr as EA.Constraint
-
-	call adocInsertAvsnittSkille
-	Call adocDiskretOverskrift(innrykk, "Restriksjoner")
-						
-	For Each constr In element.Constraints
-		Call adocStartTabell("20,80")
-		
-		Call adocTabellOverskrift( "Navn:", Trim(constr.Name) )
-		Call adocTabellRad( "Beskrivelse:", getCleanRestriction(constr.Notes) )
-		
-'''''''''''''''''
-'''		Call adocTabellRad( "Type:", constr.Type)
-'''		Call adocTabellRad( "Status:", constr.Status)
-'''		Call adocTabellRad( "Vekt:", constr.Weight)
-
-		call adocAvsluttTabell
-	Next
-
-end sub
-'-----------------Restriksjoner End-----------------
-
-
-'''  --------   hjelperutiner flytta ned til slutten av fila ....  -------------
-
-
-'------------------------------------------------------------START-------------------------------------------------------------------------------------------
-' Func Name: attrbilde(att)
-' Author: Kent Jonsrud
-' Date: 2021-09-16
-' Purpose: skriver ut lenke til bilde av element ved siden av elementet
-
-sub attrbilde(att,typ)
-	dim tag as EA.TaggedValue
-	for each tag in att.TaggedValues								
-		if LCase(tag.Name) = "sosi_bildeavmodellelement" and tag.Value <> "" then
-			Session.Output(" +")
-			Session.Output("Illustrasjon av " & typ & " "&att.Name&"")
-			Session.Output("image:"&tag.Value&"[link="&tag.Value&",width=100,height=100, alt=""Bilde av " & typ & " "&att.Name&" som er forklart i teksten.""]")
-		end if
-	next
-end sub
-'-------------------------------------------------------------END--------------------------------------------------------------------------------------------
-
-
-
-'------------------------------------------------------------START-------------------------------------------------------------------------------------------
-' Func Name: isElement
-' Author: Kent Jonsrud
-' Date: 2021-07-13
-' Purpose: tester om det finnes et element med denne ID-en.
-
-function isElement(ID)
-	isElement = false
-	if Mid(Repository.SQLQuery("select count(*) from t_object where Object_ID = " & ID & ";"), 113, 1) <> 0 then
-		isElement = true
-	end if
-end function
-'-------------------------------------------------------------END--------------------------------------------------------------------------------------------
-
-
-'-----------------Funksjon for full path-----------------
-function getPath(package)
-	dim path
-	dim parent
-	if package.parentID <> 0 then
-'		Session.Output(" -----DEBUG getPath=" & getPath & " package.Name = " & package.Name & " package.ParentID = " & package.ParentID & " package.Element.Stereotype = " & package.Element.Stereotype & " ----- ")
-		if package.Element.Stereotype = "" then
-			path = package.Name
-		else
-			path = tekstformatStereotype( package.Element.Stereotype) & package.Name
-		end if
-
-		if ucase(package.Element.Stereotype) <> "APPLICATIONSCHEMA" then
-			set parent = Repository.GetPackageByID(package.ParentID)
-			path = getPath(parent) + "/" + path
-		end if
-	end if
-	getPath = path
-end function
-'-----------------Funksjon for full path End-----------------
-
-
-function getTaggedValue(element,taggedValueName)
-	dim i, existingTaggedValue
-	getTaggedValue = ""
-	for i = 0 to element.TaggedValues.Count - 1
-		set existingTaggedValue = element.TaggedValues.GetAt(i)
-		if LCase(existingTaggedValue.Name) = LCase(taggedValueName) then
-			getTaggedValue = existingTaggedValue.Value
-		end if
-	next
-end function
-
-function getPackageTaggedValue(package,taggedValueName)
-	dim i, existingTaggedValue
-	getPackageTaggedValue = ""
-	for i = 0 to package.element.TaggedValues.Count - 1
-		set existingTaggedValue = package.element.TaggedValues.GetAt(i)
-		if LCase(existingTaggedValue.Name) = LCase(taggedValueName) then
-			getPackageTaggedValue = existingTaggedValue.Value
-		end if
-	next
-end function
-
-'-----------------Function getCleanDefinition Start-----------------
-function getCleanDefinition(txt)
-	'removes all formatting in notes fields, except crlf
-	Dim res, tegn, i, u, forrige
-	u=0
-	getCleanDefinition = ""
-	forrige = " "
-	res = ""
-	txt = Trimutf8(txt)
-	For i = 1 To Len(txt)
-		tegn = Mid(txt,i,1)
-		'for adoc \|
-		if tegn = "|" then
-			res = res + "\"
-		end if
-		if tegn = "(" and forrige = "(" then
-			res = res + " "
-		end if
-		if tegn = ")" and forrige = ")" then
-			res = res + " "
-		end if
-'			if tegn = "," then tegn = " " 
-		'for xml
-		If tegn = "<" Then
-			u = 1
-			tegn = " "
-		end if 
-		If tegn = ">" Then
-			u = 0
-			tegn = " "
-		end if
-		if u = 0 then
-			res = res + tegn
-		end if
-
-		forrige = tegn
-	'	Session.Output(" tegn" & tegn)
-	Next
-
-	getCleanDefinition = res
-end function
-'-----------------Function getCleanDefinition End-----------------
-
-'-----------------Function getCleanRestriction Start-----------------
-function getCleanRestriction(txt)
-	'removes all formatting in notes fields, except crlf
-	Dim res, tegn, i, u, forrige, v, kommentarlinje
-	kommentarlinje = 0
-	u=0
-	v=0
-	getCleanRestriction = ""
-	forrige = " "
-		res = ""
-		txt = Trimutf8(txt)
-		For i = 1 To Len(txt)
-			tegn = Mid(txt,i,1)
-			'for adoc \|
-			if tegn = "|" then
-				res = res + "\"
-			end if
-			if tegn = "(" and forrige = "(" then
-				res = res + " "
-			end if
-			if tegn = ")" and forrige = ")" then
-				res = res + " "
-			end if
-	'		if tegn = "-" and forrige <> "-" then
-	'			u = 1
-	'		end if
-			if tegn = "-" then
-				if forrige = "-" then
-					u = 0
-					if kommentarlinje > 0 then
-						res = res + " + " + vbCrLf  + "-"
-					else
-						res = res + vbCrLf  + "-"
-					end if
-					kommentarlinje = kommentarlinje + 1
-					forrige = " "
-					v = 1
-				else
-					u = 1
-				end if
-			else
-				if forrige = "-" and v = 0 then
-					res = res + "-"
-					u = 0
-				end if
-				v = 0
-			end if
-
-		'	if tegn = "," then tegn = " " 
-			'for xml
-			If tegn = "<" Then
-				u = 1
-				tegn = " "
-			end if 
-			If tegn = ">" Then
-				u = 0
-				tegn = " "
-			end if
-			if u = 0 then
-				res = res + tegn
-			end if
-
-			forrige = tegn
-		'	Session.Output(" tegn" & tegn)
-		Next
-
-	getCleanRestriction = res
-end function
-'-----------------Function getCleanRestriction End-----------------
-
-'-----------------Function getCleanBildetekst Start-----------------
-function getCleanBildetekst(txt)
-	'removes all formatting in notes fields, except crlf
-	Dim res, tegn, i, u, forrige
-	u=0
-	getCleanBildetekst = ""
-	forrige = " "
-	res = ""
-	txt = Trimutf8(txt)
-	For i = 1 To Len(txt)
-		tegn = Mid(txt,i,1)
-		'for adoc \|
-		if tegn = "|" then
-			res = res + "\"
-		end if
-		if tegn = "(" and forrige = "(" then
-			res = res + " "
-		end if
-		if tegn = ")" and forrige = ")" then
-			res = res + " "
-		end if
-		if tegn = "," then tegn = " " 
-		'for xml
-		If tegn = "<" Then
-			u = 1
-			tegn = " "
-		end if 
-		If tegn = ">" Then
-			u = 0
-			tegn = " "
-		end if
-		if u = 0 then
-			res = res + tegn
-		end if
-
-		forrige = tegn
-	'	Session.Output(" tegn" & tegn)
-	Next
-
-	getCleanBildetekst = res
-end function
-'-----------------Function getCleanBildetekst End-----------------
-
-'-----------------Function Trimutf8 Start-----------------
-function Trimutf8(txt)
-	'convert national characters back to utf8
-	Dim inp
-'	dim res, tegn, i, u, ÉéÄäÖöÜü-Áá &#233; forrige &#229;r i samme retning skal den h&#248; prim&#230;rt prim&#230;rt
-
-	inp = Trim(txt)
-	if InStr(1,inp,"&#230;",0) <> 0 then
-		inp = Replace(inp,"&#230;","æ",1,-1,0)
-	end if
-	if InStr(1,inp,"&#248;",0) <> 0 then
-		inp = Replace(inp,"&#248;","ø",1,-1,0)
-	end if
-	if InStr(1,inp,"&#229;",0) <> 0 then
-		inp = Replace(inp,"&#229;","å",1,-1,0)
-	end if
-	if InStr(1,inp,"&#198;",0) <> 0 then
-		inp = Replace(inp,"&#198;","Æ",1,-1,0)
-	end if
-	if InStr(1,inp,"&#216;",0) <> 0 then
-		inp = Replace(inp,"&#216;","Ø",1,-1,0)
-	end if
-	if InStr(1,inp,"&#197;",0) <> 0 then
-		inp = Replace(inp,"&#197;","Å",1,-1,0)
-	end if
-	if InStr(1,inp,"&#233;",0) <> 0 then
-		inp = Replace(inp,"&#233;","é",1,-1,0)
-	end if
-	Trimutf8 = inp
-end function
-'-----------------Function Trimutf8 End-----------------
-
-
-'-----------------Function nao Start-----------------
-function nao()
-	' I just want a correct xml timestamp to document when the script was run
-	dim m,d,t,min,sek,tm,td,tt,tmin,tsek
-	m = Month(Date)
-	if m < 10 then
-		tm = "0" & FormatNumber(m,0,0,0,0)
-	else
-		tm = FormatNumber(m,0,0,0,0)
-	end if
-	d = Day(Date)
-	if d < 10 then
-		td = "0" & FormatNumber(d,0,0,0,0)
-	else
-		td = FormatNumber(d,0,0,0,0)
-	end if
-	t = Hour(Time)
-	if t < 10 then
-		tt = "0" & FormatNumber(t,0,0,0,0)
-	else
-		tt = FormatNumber(t,0,0,0,0)
-	end if
-	if t = 0 then tt = "00"
-	min = Minute(Time)
-	if min < 10 then
-		tmin = "0" & FormatNumber(min,0,0,0,0)
-	else
-		tmin = FormatNumber(min,0,0,0,0)
-	end if
-	if min = 0 then tmin = "00"
-	sek = Second(Time)
-	if sek < 10 then
-		tsek = "0" & FormatNumber(sek,0,0,0,0)
-	else
-		tsek = FormatNumber(sek,0,0,0,0)
-	end if
-	if sek = 0 then tsek = "00"
-	'SessionOutput("  timeStamp=""" & Year(Date) & "-" & tm & "-" & td & "T" & tt & ":" & tmin & ":" & tsek & "Z""")
-	nao = Year(Date) & "-" & tm & "-" & td & "T" & tt & ":" & tmin & ":" & tsek & "Z"
-end function
-'-----------------Function nao End-----------------
-
-'======  Funksjoner og rutiner for asciidoc-koding, utforming av tekst, og utskrift av resultatet =====================
-
-' --------   Funksjoner som returnerer rein tekst  ---------------
-function bounds( att)
-''  Returnerer en formattert tekst som angir nedre og øvre grense for et intervall
-	bounds = att.LowerBound & ".." & att.UpperBound
-	bounds = "[" & bounds & "]"
-end function
-
-function tekstformatStereotype( stereotype)
-	tekstformatStereotype = "«" & stereotype & "» "
-end function
-
-function stereotypeNavn( element)
-	stereotypeNavn = tekstformatStereotype( element.Stereotype) & element.Name
-end function
-
-' ----------  	Funksjoner og rutiner for adoc-kode  -------------
-' *** Det gjenstår å rydde opp og forenkle
-
-''' --- Asciidoc for dokumnetoppdeling
+[discrete]
+==== Profilparametre i tagged values
+[cols="20,80"]
+|===
+|definition 
+|""@en 
+|SOSI_produktgruppe 
+|fagområde 
+|===
+<<<
 '''
-function adocPageBreak()
-	adocPageBreak = "<<<"
-end function
-sub adocInsertPageBreak
-	Session.Output(adocPageBreak())
-end sub
-
-function adocBreak()
-	adocBreak = "'''"
-end function
-sub adocInsertBreak
-	Session.Output(adocBreak())
-end sub
-
-function adocAvsnittSkille( )
-	adocAvsnittSkille = " "
-end function
-sub adocInsertAvsnittSkille
-	Session.Output(adocAvsnittSkille( ))
-end sub
-
-function adocLinjeskift( )
-	adocLinjeskift = " +"
-end function
-sub adocInsertLinjeskift
-	Session.Output(adocLinjeskift( ))
-end sub
-
-''' --- Ascidoc for overskrifter
+==== Pakke: Arealplan
+*Definisjon:* inneholder objekttypen arealplan med tilhørende datatyper og assosiasjoner
+ 
 '''
-sub adocSkrivOverskift(innrykk, overskrift)
-	skrivTekstlinje(innrykk & " " & overskrift)
-end sub
-
-sub adocStorDiskretOverskrift(innrykk, overskrift)
-''  Skriver asciidoc-kode for en stor diskret overskrift
-''  Med stor med at den skal innledes med et linjeskift og være ett nivå lavere enn gjeldende nivå.
-''  Med diskret menees at den ikke skal vises i innholdsfortegnelsen
-''
-	skrivTekstlinje( adocAvsnittSkille())
-	skrivTekstlinje("[discrete]")
-	skrivTekstlinje(innrykk & "= "  & overskrift)
-end sub
-
-sub adocDiskretOverskrift(innrykk, overskrift)
-''  Skriver asciidoc-kode for en liten diskret overskrift
-''  Med liten med at den skal være to nivå lavere enn gjeldende nivå
-''  Med diskret menees at den ikke skal vises i innholdsfortegnelsen
-''	
-	skrivTekstlinje("[discrete]")
-'''	skrivTekstlinje(innrykk & "== " & overskrift)  'Et lite HACK or å redusere et for langt innrykk
-	skrivTekstlinje(innrykk & "= " & overskrift)
-end sub
-
-''' --- Ascidoc for linker og referanser
+ 
+.Arealplan
+image::diagrammer\Arealplan.png[link=diagrammer\Arealplan.png, alt="Diagram med navn Arealplan som viser UML-klasser beskrevet i teksten nedenfor."]
+ 
 '''
-function adocBokmerke(element)
-	adocBokmerke = "[[" & LCase(element.Name) & "]]"
-end function
-sub adocInsertBokmerke(element)
-	skrivTekstlinje(adocBokmerke(element))
-end sub
-
-function targetLink( target)
-	targetLink = adocLink( target.Name, stereotypeNavn(target) )
-end function
-
-function adocTypeLink( att, typ)
-''	adocTypeLink = "<<" & LCase(att.Type) & "," & typ & ">>"  ''' adoc-syntaks for en link
-	adocTypeLink = adocLink( att.Type, typ )
-end function
-
-function adocLink( link, tekst)
-	adocLink = "<<" & LCase(link) & ", " & tekst & ">>"  
-end function
-
-''' --- Ascidoc for tabeller
+ 
+.Arealplan kodelister
+image::diagrammer\Arealplan kodelister.png[link=diagrammer\Arealplan kodelister.png, alt="Diagram med navn Arealplan kodelister som viser UML-klasser beskrevet i teksten nedenfor."]
+ 
 '''
-function adocTabellavslutning()
-''  Returnrer asciidoc-kode for å avslutte en tabell
-	adocTabellavslutning = "|==="
-end function
+ 
+[[arealplan]]
+===== «featureType» Arealplan
+*Definisjon:* toppobjekt for en arealplan, som Inneholder informasjon om planen som helhet
 
-sub adocAvsluttTabell
-''  Skriver asciidoc-kode for å avslutte en tabell
-	Session.Output(adocTabellavslutning())
-end sub
+En arealplan kan være:
+regulerings- og bebyggelsesplan ( pbl. 1985 &#167;&#167; 22 og 24 og 28-2,) / 
+områderegulering eller detaljregulering ( pbl. 2008 &#167;&#167; 12-1, 12-2 og 12-3)
+eller
+kommune (-del) plan (pbl. 1985 &#167; 20-4 første ledd, eller pbl. 2008 &#167; 11-5)
 
-sub adocStartTabell( kolonneBredder)
-''  Skriver asciidoc-kode for å opprette en tabell med angitte kolonnebredder
-	Session.Output("[cols=""" & kolonneBredder & """]")
-	Session.Output("|===")
-end sub
+ 
+ 
+[discrete]
+===== Egenskaper
+[cols="20,80"]
+|===
+|*Navn:* 
+|*nasjonalArealplanId* 
+|Definisjon: 
+|landsdekkende entydig og unik identifikasjon for en arealplan (pbl. 1985 &#167; 18, &#167; 20-1 andre og femte ledd og &#167; 22 og &#167; 28-2 / pbl. &#167;&#167; 6-4, 8-1, 9-1, 11-1 og &#167; 12-1, samt kart- og planforskriften &#167; 9 andre og sjette ledd) 
+|Multiplisitet: 
+|[1..1] 
+|Type: 
+|<<nasjonalarealplanid, «dataType» NasjonalArealplanId>> 
+|Profilparametre i tagged values:  
+| 
+SOSI_navn: NASJONALAREALPLANID +
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*plannavn* 
+|Definisjon: 
+|planens offisielle navn 
+|Multiplisitet: 
+|[1..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/CharacterString[CharacterString] 
+|Profilparametre i tagged values:  
+| 
+SOSI_navn: PLANNAVN +
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*plantype* 
+|Definisjon: 
+|type arealplan
+Arealpan kan være en type reguleringsplan eller en type kommuneplan 
+|Multiplisitet: 
+|[1..1] 
+|Type: 
+|<<plantype, «Union» Plantype>> 
+|Profilparametre i tagged values:  
+| 
+SOSI_navn: PLANTYPE +
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*planstatus* 
+|Definisjon: 
+|planens behandling (pbl. 1985 &#167;&#167; 20-5, 27-1, 27-2, 28-1 og 28-2) 
+samt planens rettsvirkning (pbl. 1985 &#167;&#167;  20-6, 28-2 og 31 / pbl. &#167;&#167; 8-3, 8-4, 9-3, 9-4, &#167;&#167; 11-12 til 11-15, og &#167;&#167; 12-8 til 12-12) 
+|Multiplisitet: 
+|[1..1] 
+|Type: 
+|<<planstatus, «Enumeration» Planstatus>> 
+|Profilparametre i tagged values:  
+| 
+SOSI_navn: PLANSTAT +
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*omPlanbestemmelser* 
+|Definisjon: 
+|om planen har bestemmelser (pbl. 1985 &#167; 20-4 andre ledd bokstav a til h og &#167; 26 / pbl. &#167;&#167; 11-9, 11-10 og 11-11, samt &#167; 12-7), og hvordan disse i så fall er representert
 
-sub adocTabellOverskrift( parameter, verdi)
-    Call adocTabellRad( adocBold(parameter), adocBold(verdi) )
-end sub
+Merknad: Tidligere hadde denne egenskapen navnet 'planbestemmelser', men er gitt nytt navn for at den ikke skal forveksles med forhold knyttet til digitale planbestemmelser.
+ 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|<<omplanbestemmelser, «Enumeration» OmPlanbestemmelser>> 
+|Profilparametre i tagged values:  
+| 
+SOSI_navn: PLANBEST +
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*lovreferanse* 
+|Definisjon: 
+|hvilken lov planen er vedtatt etter
+ 
+|Multiplisitet: 
+|[1..1] 
+|Type: 
+|<<lovreferansetype, «Enumeration» LovreferanseType>> 
+|Profilparametre i tagged values:  
+| 
+SOSI_navn: LOVREFERANSE +
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*lovreferanseBeskrivelse* 
+|Definisjon: 
+|tekstlig beskrivelse av hvilken lov planen er vedtatt etter. 
 
-sub adocTabellOverskrift3( parameter, verdi, ekstra)
-    Call adocTabellRad3( adocBold(parameter), adocBold(verdi), adocBold(ekstra) )
-end sub
+Merknad: Kan være utfyllende til egenskapen lovereferanse 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/CharacterString[CharacterString] 
+|Profilparametre i tagged values:  
+| 
+SOSI_navn: LOVREFBESKRIVELSE +
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*opprinneligPlanId* 
+|Definisjon: 
+|opprinnelig planidentifikasjon (planid)
 
-sub adocTabellRad( parameter, verdi)
-''  Skriver asciidoc-kode for å skive ut en rad i en tabell med to kolonner
-	Session.Output("|" & parameter & " ")
-	Session.Output("|" & verdi & " ")
-''	Session.Output(" ")
-end sub
+Danner sammen med egenskapen opprinneligAdministrativEnhet den opprinnelige unike identifikasjonen til planen (opprinnelig nasjonalArealplanid). Disse to egenskapen brukes kun dersom planen har fått ny nasjonalArealplanid. 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/CharacterString[CharacterString] 
+|Profilparametre i tagged values:  
+| 
+SOSI_navn: OPPRINNELIGPLANID +
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*opprinneligAdministrativEnhet* 
+|Definisjon: 
+|opprinnelig administrativEnhet for arealplanen.
 
-sub adocTabellRad3( parameter, verdi, ekstra)
-''  Skriver asciidoc-kode for å skive ut en rad i en tabell med tre kolonner
-''	Session.Output("|" & parameter & ": ")
-	Session.Output("|" & parameter & " ")
-	Session.Output("|" & verdi & " ")
-	Session.Output("|" & ekstra & " ")
-''	Session.Output(" ")
-end sub
+Danner sammen med egenskapen opprinneligPlanId den opprinnelige unike identifikasjonen til planen (opprinnelig nasjonalArealplanid). Disse to egenskapen brukes kun dersom planen har fått ny nasjonalArealplanid.
+ 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|<<characterstring, «Union» CharacterString>> 
+|Profilparametre i tagged values:  
+| 
+SOSI_navn: OPPRINNELIGADMINISTRATIVENHET +
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*forslagsstillerType* 
+|Definisjon: 
+|om forslagsstiller er privat eller offentlig 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|<<forslagsstillertype, «Enumeration» ForslagsstillerType>> 
+|Profilparametre i tagged values:  
+| 
+SOSI_navn: FORSLAGSSTILLERTYPE +
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*plandokumentasjonOppdatert* 
+|Definisjon: 
+|om plandokument er oppdatert i henhold til endelig planvedtak 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/Boolean[Boolean] 
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*ubehandletKlage* 
+|Definisjon: 
+|om det foreligger klage med oppsettende virkning 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/Boolean[Boolean] 
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*ubehandletInnsigelse* 
+|Definisjon: 
+|om det foreligger innsigelse som ikke er behandlet av departementet.
 
+Merknad: kommunen har vedtatt planen men den har ikke full rettsvirkning før endelig avgjørelse av departementet. 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/Boolean[Boolean] 
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*vedtakEndeligPlanDato* 
+|Definisjon: 
+|dato for rettsvirkning av arealplanen med tilhørende bestemmelser gjennom statlig, regionalt eller kommunalt vedtak etter plan- og bygningsloven
+ 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/Date[Date] 
+|Profilparametre i tagged values:  
+| 
+SOSI_navn: VEDTAKENDELIGPLANDATO +
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*kunngjøringsdato* 
+|Definisjon: 
+|dato når endelig vedtatt arealplan eller planbestemmelse ble kunngjort, pbl. § 6-3, 8-5 siste ledd, 11-15 tredje ledd og 12-12 siste ledd 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/Date[Date] 
+|Profilparametre i tagged values:  
+| 
+SOSI_navn: KUNNGJØRINGSDATO +
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*ikrafttredelsesdato* 
+|Definisjon: 
+|dato når arealplanen trådte ikraft (pbl. 1985 &#167;&#167; 18, 19-1 sjette ledd, 20-1 andre ledd, 22 og 28-2, samt pbl. &#167;&#167; 8-4, 8-5, 11-6, 11- 15, 11-16, 12-4, 12-12 og 12-13) 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/Date[Date] 
+|Profilparametre i tagged values:  
+| 
+SOSI_navn: IKRAFT +
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*versjonsdato* 
+|Definisjon: 
+|datoen for denne versjonen
 
-''' Asciidoc for bilder
+Egenskapen kan anvendes for planer i forslagsfasen 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/DateTime[DateTime] 
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*versjonsnummer* 
+|Definisjon: 
+|viser versjonen av et planforslag 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/CharacterString[CharacterString] 
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*alternativReferanse* 
+|Definisjon: 
+|gir anledning til å identifisere ulike planalternativ for et planforslag 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/CharacterString[CharacterString] 
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*planhøring* 
+|Definisjon: 
+|egenskapssett for å holde rede på versjoner og alternativer for planforslag som er på høring
+
+Med høring menes at planforslag sendes ut og legges ut til offentlig ettersyn (pbl. &#167; 11-15, &#167; 12-9)
+ 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|<<planhøring, «dataType» Planhøring>> 
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*planområde* 
+|Definisjon: 
+|hele planens utstrekning uavhengig av vertikalnivå
+Brukes for planer i oppstartsfasen der planområder/vertikalnivå ikke er definert ennå
+ 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|<<gm_multisurface, GM_MultiSurface>> 
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*referansemålestokk* 
+|Definisjon: 
+|Målestokktall for plankartet 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/Integer[Integer] 
+|===
+ 
+[discrete]
+===== Roller
+[cols="20,80"]
+|===
+|*Rollenavn:* 
+|*kommentar* 
+|Multiplisitet: 
+|[0..*] 
+|Til klasse 
+|<<kommentar, «FeatureType» Kommentar>> 
+|===
+[cols="20,80"]
+|===
+|*Rollenavn:* 
+|*bestemmelseSamling* 
+|Multiplisitet: 
+|[0..1] 
+|Til klasse: 
+|<<reguleringsplanbestemmelser, «featureType» Reguleringsplanbestemmelser>> 
+|===
+[cols="20,80"]
+|===
+|*Rollenavn:* 
+|*rpOmråde* 
+|Definisjon: 
+|reguleringsplanområde som inngår i arealplanen 
+|Multiplisitet: 
+|[0..*] 
+|Til klasse 
+|<<rpområde, «featureType» RpOmråde>> 
+|===
+[cols="20,80"]
+|===
+|*Rollenavn:* 
+|*plandokument* 
+|Multiplisitet: 
+|[0..*] 
+|Assosiasjonstype: 
+|Aggregering Aggregation 
+|Til klasse 
+|<<plandokument, «FeatureType» Plandokument>> 
+|===
+[cols="20,80"]
+|===
+|*Rollenavn:* 
+|*kpOmråde* 
+|Definisjon: 
+|kommuneplanområde som inngår i arealplanen 
+|Multiplisitet: 
+|[0..*] 
+|Til klasse 
+|<<kpområde, «featureType» KpOmråde>> 
+|===
+[cols="20,80"]
+|===
+|*Rollenavn:* 
+|*planbehandling* 
+|Multiplisitet: 
+|[1..*] 
+|Til klasse 
+|<<planbehandling, «FeatureType» Planbehandling>> 
+|===
+[cols="20,80"]
+|===
+|*Rollenavn:* 
+|*fraPlan* 
+|Definisjon: 
+|assosiasjon fra plan 
+|Multiplisitet: 
+|[0..*] 
+|Assosiasjonsnavn: 
+|RelasjonTilAnnenPlan 
+|Til klasse 
+|<<arealplan, «featureType» Arealplan>> 
+|===
+ 
+[discrete]
+===== Restriksjoner
+[cols="20,80"]
+|===
+|*Navn:* 
+|*Samsvar mellom plantype og type planområde* 
+|Beskrivelse: 
+|/* Planområdene til en reguleringsplan skal være RpOmråde, mens planområdene til en kommuneplan skal være KpOmråde */
+
+inv: rpOmråde.nonEmpty() implies  plantype.rpPlantype.nonEmpty()
+
+inv: kpOmråde.nonEmpty() implies  plantype.kpPlantype.nonEmpty()
+ 
+|===
+ 
 '''
-function adocBildeTekst(tekst)
-	adocBildeTekst = "." & tekst 
-end function
+ 
+[[planhøring]]
+===== «dataType» Planhøring
+*Definisjon:* egenskapssett for å holde rede på versjoner og alternativer for planforslag legges ut til offentlig ettersyn (pbl. &#167; 11-15, &#167; 12-9)
+ 
+ 
+[discrete]
+===== Egenskaper
+[cols="20,80"]
+|===
+|*Navn:* 
+|*høringsversjon* 
+|Definisjon: 
+|planforslaget kan legges ut til offentlig ettersyn flere ganger. 
 
-function adocBildeLink(bilde, alternativbildetekst)
-	adocBildeLink = "image::" & bilde & "[link=" & bilde & ", alt=""" & alternativbildetekst & """]"
-end function
-
-sub	adocSkrivBildeTekst(tekst, bilde, alternativbildetekst)
-	Session.Output(adocBildeTekst(tekst))
-	Session.Output(adocBildeLink(bilde, alternativbildetekst))
-end sub
-
-''' Ascidoc for tektformatering
+Hver publisering gis en versjonsangivelse (f.eks. en dato eller et serienummer) 
+|Multiplisitet: 
+|[1..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/Integer[Integer] 
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*høringsalternativ* 
+|Definisjon: 
+|planforslaget kan legges ut til offentlig ettersyn med to eller flere planalternativer 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/CharacterString[CharacterString] 
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*høringsstart* 
+|Definisjon: 
+|dato for når offentlig ettersyn starter 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/Date[Date] 
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*høringsslutt* 
+|Definisjon: 
+|dato for når offentlig ettersyn slutter 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/Date[Date] 
+|===
+ 
 '''
-function adocBold( tekst)
-''	Returnerer asciidoc-kode for feit/bold tekst
-	adocBold = "*" & tekst & "*"
-end function 
-
-function adocKursiv( tekst)
-''	Returnerer asciidoc-kode for kursiv tekst
-	adocKursiv = "_" & tekst & "_"
-end function 
-
-
-''' --- Ascidoc for definisjoner
+ 
+[[plantype]]
+===== «Union» Plantype
+*Definisjon:* sammensatt datatype som angir type reguleringsplan eller type kommuneplan
+ 
+ 
+[discrete]
+===== Egenskaper
+[cols="20,80"]
+|===
+|*Navn:* 
+|*rpPlantype* 
+|Definisjon: 
+|type reguleringsplan 
+|Multiplisitet: 
+|[1..1] 
+|Type: 
+|<<rpplantype, «Enumeration» RpPlantype>> 
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*kpPlantype* 
+|Definisjon: 
+|type kommuneplan
+ 
+|Multiplisitet: 
+|[1..1] 
+|Type: 
+|<<kpplantype, «Enumeration» KpPlantype>> 
+|===
+ 
 '''
-function adocDefinisjonsAvsnitt( element)
-	adocDefinisjonsAvsnitt = adocBold("Definisjon:") & " " & getCleanDefinition(element.Notes)
-end function 
+ 
+[[planstatus]]
+===== «Enumeration» Planstatus
+*Definisjon:* kodeliste for planens behandling (pbl. 1985 &#167;&#167; 19-4, 20-5, 27-1, 27-2, 28-1 og 28-2) samt planens rettsvirkning (pbl. 1985 &#167;&#167; 19-6, 20-6, 28-2 og 31/pbl. &#167;&#167; 8-3, 8-4, 9-3, 9-4, &#167;&#167; 11-12 til 11-15, og &#167;&#167; 12-8 til 12-12)
+ 
+ 
+[discrete]
+===== Koder i modellen
+[cols="25,60,15"]
+|===
+|*Kodenavn:* 
+|*Definisjon:* 
+|*Utvekslingsalias:* 
+|Planinitiativ 
+| 
+|0 
+|Planlegging igangsatt 
+| 
+|1 
+|Planforslag 
+| 
+|2 
+|Endelig vedtatt arealplan 
+| 
+|3 
+|Opphevet 
+| 
+|4 
+|Utgått/erstattet 
+| 
+|5 
+|Vedtatt plan med utsatt rettsvirkning 
+| 
+|6 
+|Overstyrt 
+| 
+|8 
+|Avvist 
+| 
+|9 
+|Trukket/uaktuelt 
+| 
+|10 
+|===
+ 
+'''
+ 
+[[omplanbestemmelser]]
+===== «Enumeration» OmPlanbestemmelser
+*Definisjon:* kodeliste for om planen har bestemmelser (pbl. 1985 &#167; 20-4 andre ledd bokstav a til h og &#167; 26 / pbl. &#167;&#167; 11-9, 11-10 og 11-11, samt &#167; 12-7), og hvordan disse i så fall er representert
+ 
+ 
+[discrete]
+===== Koder i modellen
+[cols="25,60,15"]
+|===
+|*Kodenavn:* 
+|*Definisjon:* 
+|*Utvekslingsalias:* 
+|Med bestemmelser som egen tekst 
+|Planbestemmelser framgår som egen tekst, men ikke på kartet 
+|1 
+|Uten bestemmelser 
+|Planen har ingen bestemmelser, hverken på kartet eller som egen tekst 
+|2 
+|Planbestemmelser fremgår kun av kartet 
+|Planbestemmelser fremgår kun av kartet (bygghøyder mv.) 
+|3 
+|Planbestemmelser både kart og tekst 
+|Planbestemmelser både på kart og som egen tekst 
+|4 
+|===
+ 
+'''
+ 
+[[lovreferansetype]]
+===== «Enumeration» LovreferanseType
+*Definisjon:* kodeliste for hvilken lov planen er vedtatt etter
+ 
+ 
+[discrete]
+===== Koder i modellen
+[cols="25,60,15"]
+|===
+|*Kodenavn:* 
+|*Definisjon:* 
+|*Utvekslingsalias:* 
+|Før BL 1924 
+|Før bygningsloven av 1924 
+|1 
+|BL 1924 
+|Bygningsloven av 1924 
+|2 
+|BL 1965 
+|Bygningsloven av 1965 
+|3 
+|PBL 1985 
+|Plan- og bygningsloven av 1985 
+|4 
+|PBL 1985 eller før 
+|Plan- og bygningsloven av 1985 eller før 
+|5 
+|PBL 2008 
+|Plan- og bygningsloven av 2008 
+|6 
+|===
+ 
+'''
+ 
+[[forslagsstillertype]]
+===== «Enumeration» ForslagsstillerType
+*Definisjon:* kodeliste for om forslagsstiller er offentlig planmyndighet eller privat
+ 
+ 
+[discrete]
+===== Koder i modellen
+[cols="25,60,15"]
+|===
+|*Kodenavn:* 
+|*Definisjon:* 
+|*Utvekslingsalias:* 
+|offentlig 
+| 
+|1 
+|privat 
+| 
+|2 
+|===
+<<<
+'''
+===== Underpakke: NasjonalArealplanID
+*Definisjon:* 
+ 
+'''
+ 
+.Nasjonal ArealplanID
+image::diagrammer\Nasjonal ArealplanID.png[link=diagrammer\Nasjonal ArealplanID.png, alt="Diagram som viser den sammensatte datatypen NasjonalArealplanId"]
+ 
+'''
+ 
+[[nasjonalarealplanid]]
+===== NasjonalArealplanID::«dataType» NasjonalArealplanId
+*Definisjon:* landsdekkende entydig og unik identifikasjon av en arealplan (pbl. &#167;&#167; 6-4, 9-1, og 12-1, samt kart- og planforskriften &#167; 9 andre og sjette ledd).
+ 
+ 
+[discrete]
+====== Egenskaper
+[cols="20,80"]
+|===
+|*Navn:* 
+|*administrativEnhet* 
+|Definisjon: 
+|entydig identifikasjon av administrativ enhet som vedtar planen (vedtaksmyndighet)
 
-sub adocSkrivDefinisjon( element)
-	skrivTekstlinje(adocDefinisjonsAvsnitt( element))
-end sub
-	
-	
-' ----------  	Rutiner for utskrift av tekst til output
+Merknad: Bruken av landkode=NO er forbeholdt statlig vedtaksmyndighet
+ 
+|Multiplisitet: 
+|[1..1] 
+|Type: 
+|<<administrativenhetskode, «Union» AdministrativEnhetskode>> 
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*planId* 
+|Definisjon: 
+|entydig identifikasjon for en plan innen vedkommende administrative enhet  (pbl. 1985 &#167; 18, &#167; 19-1 sjette ledd, &#167; 20-1 andre og femte ledd og &#167; 22 og &#167; 28-2 / pbl. &#167;&#167; 6-4, 8-1, 9-1, 11-1 og &#167; 12-1, samt kart- og planforskriften &#167; 9 andre og sjette ledd) 
+|Multiplisitet: 
+|[1..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/CharacterString[CharacterString] 
+|Profilparametre i tagged values:  
+| 
+SOSI_navn: PLANID +
+|===
+ 
+[discrete]
+====== Restriksjoner
+[cols="20,80"]
+|===
+|*Navn:* 
+|*maksimalt 16 tegn for planid* 
+|Beskrivelse: 
+|Det kan anvendes maksimalt 16 tegn for planid
+ 
+|===
+ 
+'''
+ 
+[[administrativenhetskode]]
+===== NasjonalArealplanID::«Union» AdministrativEnhetskode
+*Definisjon:* entydig identifikasjon av administrativ enhet som kan vedta en arealplan, enten en kommune, et fylke, eller staten
+ 
+ 
+[discrete]
+====== Egenskaper
+[cols="20,80"]
+|===
+|*Navn:* 
+|*kommunenummer* 
+|Definisjon: 
+|ekstern kodeliste som viser til offisiell nummerering av kommuner 
 
-sub skrivTekstlinje(tekst)
-	Session.Output(tekst)
-end sub
+Merknad:
+Det presiseres at kommunenummer alltid skal ha 4 siffer, dvs. eventuelt med ledende null. Kommunenummer benyttes for kopling mot en rekke andre registre som også benytter 4 siffer. 
+|Multiplisitet: 
+|[1..1] 
+|Type: 
+|<<kommunenummer, «CodeList» Kommunenummer>> 
+|Profilparametre i tagged values:  
+| 
+defaultCodespace: https://register.geonorge.no/sosi-kodelister/kommunenummer-alle +
+SOSI_navn: KOMM +
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*fylkesnummer* 
+|Definisjon: 
+|ekstern kodeliste som viser til offisiell nummerering av fylker
 
-sub skrivTekstblokk(tekstBlokk)
-	for each tekst in tekstblokk 
-		Session.Output(tekst)
-	next
-end sub
+Merknad:
+Det presiseres at fylkesnummer alltid skal ha 2 siffer, dvs. eventuelt med ledende null. Fylkesnummer benyttes for kopling mot en rekke andre registre som også benytter 2 siffer 
+|Multiplisitet: 
+|[1..1] 
+|Type: 
+|<<fylkesnummer, «CodeList» Fylkesnummer>> 
+|Profilparametre i tagged values:  
+| 
+defaultCodespace: https://register.geonorge.no/sosi-kodelister/fylkesnummer-alle +
+SOSI_navn: FYLKESNR +
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*landkode* 
+|Definisjon: 
+|kode med verdien 'NO', som angir at administrativ enhet er staten Norge, ihht. ISO 3166 
+|Multiplisitet: 
+|[1..1] 
+|Type: 
+|<<landkode, «Enumeration» Landkode>> 
+|Profilparametre i tagged values:  
+| 
+SOSI_navn: LANDKODE +
+|===
+ 
+'''
+ 
+[[kommunenummer]]
+===== NasjonalArealplanID::«CodeList» Kommunenummer
+*Definisjon:* ekstern kodeliste for kommunenummer.
 
-'====================================================
+Merknad: Det presiseres at kommune alltid skal ha 4 sifre, dvs. eventuelt med ledende null. Kommune benyttes for kopling mot en rekke andre registre som også benytter 4 sifre.
+ 
+ 
+[discrete]
+====== Profilparametre i tagged values
+[cols="20,80"]
+|===
+|asDictionary 
+|true 
+|codeList 
+|https://register.geonorge.no/sosi-kodelister/kommunenummer-alle 
+|===
+ 
+'''
+ 
+[[fylkesnummer]]
+===== NasjonalArealplanID::«CodeList» Fylkesnummer
+*Definisjon:* ekstern kodeliste for kommunenummer.
 
-OnProjectBrowserScript
+Merknad: Det presiseres at kommune alltid skal ha 4 sifre, dvs. eventuelt med ledende null. Kommune benyttes for kopling mot en rekke andre registre som også benytter 4 sifre.
+ 
+ 
+[discrete]
+====== Profilparametre i tagged values
+[cols="20,80"]
+|===
+|asDictionary 
+|true 
+|codeList 
+|https://register.geonorge.no/sosi-kodelister/fylkesnummer-alle 
+|===
+ 
+'''
+ 
+[[landkode]]
+===== NasjonalArealplanID::«Enumeration» Landkode
+*Definisjon:* alfanumerisk kode for nasjonalt nivå / Norge.
+
+Avledet fra "ISO 3166 Codes for the representation of names of countries and their subdivisions"
+ 
+ 
+[discrete]
+====== Koder i modellen
+[cols="25,60,15"]
+|===
+|*Kodenavn:* 
+|*Definisjon:* 
+|*Utvekslingsalias:* 
+|Norge 
+| 
+|NO 
+|===
+<<<
+'''
+==== Pakke: Plankart felles
+*Definisjon:* pakke med klasser som er felles for reguleringsplan og kommuneplan
+ 
+'''
+ 
+.Kartobjekt
+image::diagrammer\Kartobjekt.png[link=diagrammer\Kartobjekt.png, alt="Diagram som viser den abstrakte objekttypen Kartobjekt, som omfatter alle typer kartobjekter i en arealplan"]
+ 
+'''
+ 
+.Kodelister og datatpyer
+image::diagrammer\Kodelister og datatpyer.png[link=diagrammer\Kodelister og datatpyer.png, alt="Diagram som viser kodelister og datatyper som er felles for begge plantyper, etter begge lover"]
+ 
+'''
+ 
+.Hoveddiagram Påskrift
+image::diagrammer\Hoveddiagram Påskrift.png[link=diagrammer\Hoveddiagram Påskrift.png, alt="Diagram som viser objekttypen P&#229;skrift"]
+ 
+'''
+ 
+[[kartobjekt]]
+===== _«featureType» Kartobjekt (abstrakt)_
+*Definisjon:* Abstrakt supertype som omfatter alle type kartobjekter i en  arealplan.
+
+Den er bærer av assosiasjoner til hhv Arealplanobjektet og til evt. påskrifter.
+
+Produktspesifikasjonene må spesifisere og avgrense hvilke påskrifter som er tillatt for de enkelte type kartobjekter.
+ 
+ 
+[discrete]
+===== Egenskaper
+[cols="20,80"]
+|===
+|*Navn:* 
+|*nasjonalArealplanId* 
+|Definisjon: 
+|landsdekkende entydig og unik identifikasjon for en arealplan (pbl. 1985 &#167; 18, &#167; 20-1 andre og femte ledd og &#167; 22 og &#167; 28-2 / pbl. &#167;&#167; 6-4, 8-1, 9-1, 11-1 og &#167; 12-1, samt kart- og planforskriften &#167; 9 andre og sjette ledd)
+
+Hvert kartobjekt skal ha en referanse til den arealplanen de tilhører. Brukt som koblingsnøkkel fungerer denen egenskapen som en realisering av assosiasjonen til Arealplanobjektet. Forøvrig kan den avledes fra Arealplan 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|<<nasjonalarealplanid, «dataType» NasjonalArealplanId>> 
+|===
+ 
+[discrete]
+===== Roller
+[cols="20,80"]
+|===
+|*Rollenavn:* 
+|*arealplan* 
+|Multiplisitet: 
+|[1] 
+|Til klasse 
+|<<arealplan, «featureType» Arealplan>> 
+|===
+[cols="20,80"]
+|===
+|*Rollenavn:* 
+|*påskrift* 
+|Multiplisitet: 
+|[0..*] 
+|Til klasse 
+|<<påskrift, «featureType» Påskrift>> 
+|===
+ 
+[discrete]
+===== Arv og realiseringer
+[cols="20,80"]
+|===
+|Subtyper: 
+| 
+<<rpområde, «featureType» RpOmråde>> +
+<<rpregulerthøyde, «featureType» RpRegulertHøyde>> +
+<<rpjuridisklinje, «featureType» RpJuridiskLinje>> +
+<<rpbestemmelsemidlbygganlegg, «featureType» RpBestemmelseMidlByggAnlegg>> +
+<<rpbestemmelseområde, «FeatureType» RpBestemmelseOmråde>> +
+<<rpgrense, «featureType» RpGrense>> +
+<<rparealformålområde, «FeatureType» RpArealformålOmråde>> +
+<<rpbestemmelseregterreng, «featureType» RpBestemmelseRegTerreng>> +
+<<rpjuridiskpunkt, «featureType» RpJuridiskPunkt>> +
+<<rphensynsone, «featureType» RpHensynSone>> +
+<<rpformålgrense, «featureType» RpFormålGrense>> +
+<<rphandlingområde, «featureType» RpHandlingOmråde>> +
+<<rbrekkefølgeområde, «featureType» RbRekkefølgeOmråde>> +
+<<rbfornyelseområde, «featureType» RbFornyelseOmråde>> +
+<<rbrestriksjonområde, «featureType» RbRestriksjonOmråde>> +
+<<rbbevaringområde, «featureType» RbBevaringOmråde>> +
+<<rbfareområde, «featureType» RbFareOmråde>> +
+<<rbformålområde, «featureType» RbFormålOmråde>> +
+<<kpsamferdselpunkt, «featureType» KpSamferdselPunkt>> +
+<<kpsamferdsellinje, «featureType» KpSamferdselLinje>> +
+<<kpretningslinjeområde, «featureType» KpRetningslinjeOmråde>> +
+<<kprestriksjonområde, «featureType» KpRestriksjonOmråde>> +
+<<kparealbrukområde, «featureType» KpArealbrukOmråde>> +
+<<kparealgrense, «featureType» KpArealGrense>> +
+<<kparealformålområde, «featureType» KpArealformålOmråde>> +
+<<kpgrense, «featureType» KpGrense>> +
+<<kphensynsone, «featureType» KpHensynSone>> +
+<<kpjuridisklinje, «featureType» KpJuridiskLinje>> +
+<<kpinfrastrukturlinje, «featureType» KpInfrastrukturLinje>> +
+<<kpregulerthøyde, «featureType» KpRegulertHøyde>> +
+<<kpbestemmelseområde, «featureType» KpBestemmelseOmråde>> +
+<<påskrift, «featureType» Påskrift>> +
+<<kpområde, «featureType» KpOmråde>> +
+|===
+ 
+'''
+ 
+[[påskrift]]
+===== «featureType» Påskrift
+*Definisjon:* supplerende tekst til 
+regulerings- og bebyggelsesplan (pbl. 1985 &#167;&#167; 25 og 26 og 28-2) / områderegulering og detaljregulering (pbl. &#167;&#167; 12-2, 12-3, 12-5 og 12-7)
+eller til 
+kommune (-del) plan (pbl. 1985 &#167; 20-4 første ledd, eller pbl. &#167; 11-7 andre ledd)
+
+ 
+ 
+[discrete]
+===== Egenskaper
+[cols="20,80"]
+|===
+|*Navn:* 
+|*tekststreng* 
+|Definisjon: 
+|påskriftens tekstlige innhold
+ 
+|Multiplisitet: 
+|[1..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/CharacterString[CharacterString] 
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*påskriftType* 
+|Definisjon: 
+|hva påskriften i plankartet omhandler.
+
+Det må være samsvar mellom denne egenskapen og det kartobjektet som påskriften refererer til. 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|<<påskrifttype, «Enumeration» PåskriftType>> 
+|Profilparametre i tagged values:  
+| 
+SOSI_navn: RPPÅSKRIFTTYPE +
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*posisjon* 
+|Definisjon: 
+|representasjonspunkt som knytter påskriften geometrisk til et annet kartobjekt.
+
+Svarer til 1. koordinat fra SOSI-formatets .TEKST-geometri 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|<<gm_point, GM_Point>> 
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*tekstplassering* 
+|Definisjon: 
+|plassering av påskriften, representert ved punkt eller linje
+
+Svarer til koordinat nr 2 og utover fra SOSI-formatets .TEKST-geometri. Den første koordinaten representerer tekstens startpunkt, ved bunnlinja av teksten. Dersom det er brukt punktgeometri, følger teksten vannrett ut fra startpunktet. Dersom det er brukt linjegeometri, følger teksten denne linja ut fra startpunktet.
 
 
+
+
+ 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|<<gm_primitive, «dataType» GM_Primitive>> 
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*formatering* 
+|Definisjon: 
+|hvordan påskriften skal formateres
+Svarer til presentasjonsegenskapene i SOSI-formatets .TEKST-geometri
+
+ 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|<<tekstformatering, «dataType» Tekstformatering>> 
+|===
+ 
+[discrete]
+===== Arv og realiseringer
+[cols="20,80"]
+|===
+|Supertype:  
+|<<kartobjekt, «featureType» Kartobjekt>> 
+|===
+ 
+'''
+ 
+[[utnytting]]
+===== «dataType» Utnytting
+*Definisjon:* grad av utnytting (pbl. 1985 &#167;&#167; 20-4 annet ledd bokstav b, 26 første ledd og forskrift TEK kap III, pbl. &#167; 12-7 første ledd nr 5 og TEK17 kap. 5)
+ 
+ 
+[discrete]
+===== Egenskaper
+[cols="20,80"]
+|===
+|*Navn:* 
+|*utnyttingstype* 
+|Definisjon: 
+|type grad av utnytting (pbl. 1985 &#167;&#167; 20-4 annet ledd bokstav b, 26 første ledd og forskrift TEK kap. III) 
+|Multiplisitet: 
+|[1..1] 
+|Type: 
+|<<utnyttingstype, «Enumeration» Utnyttingstype>> 
+|Profilparametre i tagged values:  
+| 
+SOSI_navn: UTNTYP +
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*utnyttingstall* 
+|Definisjon: 
+|tallverdi for grad av utnytting (pbl. 1985 &#167;&#167; 20-4 annet ledd bokstav b, 26 første ledd og forskrift TEK kap. III) 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/Integer[Integer] 
+|Profilparametre i tagged values:  
+| 
+SOSI_navn: UTNTALL +
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*utnyttingstall_minimum* 
+|Definisjon: 
+|tallverdi for minste utnyttingsgrad (pbl. &#167;12-7 første ledd nr 5 og TEK10 kap 5 ) 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/Integer[Integer] 
+|Profilparametre i tagged values:  
+| 
+SOSI_navn: UTNTALL_MIN +
+|===
+ 
+[discrete]
+===== Restriksjoner
+[cols="20,80"]
+|===
+|*Navn:* 
+|*Bruk av utnyttingstall* 
+|Beskrivelse: 
+|/* utnyttingstall og utnyttingstall_minimum skal ikke brukes for utnyttingstype 10 og 11, men er påkrevd for alle andre utnyttingstyper  */
+
+INV: (utnyttingstype = 10 OR utnyttingstype = 11) XOR (utnyttingstall.nonEmpty() OR utnyttingstall_minimum.nonEmpty() )
+ 
+|===
+ 
+[discrete]
+===== Restriksjoner
+[cols="20,80"]
+|===
+|*Navn:* 
+|*Utnyttingstype for nyere planer* 
+|Beskrivelse: 
+|For planer etter gjeldende pbl er utnyttingstype begrensa til (10, 11, 15, 16, 17, 18) 
+|===
+ 
+'''
+ 
+[[vertikallag]]
+===== «dataType» Vertikallag
+*Definisjon:* egenskaper for å identifisere, plassere og skille mellom vertikale lag i samme vertikalnivå
+ 
+ 
+[discrete]
+===== Egenskaper
+[cols="20,80"]
+|===
+|*Navn:* 
+|*lag* 
+|Definisjon: 
+|identifiserer vertikallag innen samme vertikalnivå. 
+Brukes der det er flere planområder innen ett vertikalnivå 
+|Multiplisitet: 
+|[1..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/CharacterString[CharacterString] 
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*referansehøyde* 
+|Definisjon: 
+|nærmere spesifikasjon av høydenivået for et vertikallag 
+ 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/Real[Real] 
+|===
+ 
+'''
+ 
+[[påskrifttype]]
+===== «Enumeration» PåskriftType
+*Definisjon:* kode for å angi hva påskrift/nødvendig tekst i plankartet omhandler 
+Lagt til suoertypene Kartobjekt og Påskrift
+ 
+ 
+[discrete]
+===== Koder i modellen
+[cols="25,60,15"]
+|===
+|*Kodenavn:* 
+|*Definisjon:* 
+|*Utvekslingsalias:* 
+|arealformål 
+|Arealformål 
+|1 
+|feltnavn 
+|Feltnavn 
+|2 
+|areal 
+|Areal 
+|3 
+|planId 
+|PlanId 
+|4 
+|utnytting 
+|Utnytting 
+|5 
+|målsetting 
+|Målsetting 
+|6 
+|radius 
+|Radius 
+|7 
+|kotehøyde 
+|Kotehøyde 
+|8 
+|plantilbehør 
+|Plantilbehør 
+|9 
+|===
+ 
+'''
+ 
+[[utnyttingstype]]
+===== «Enumeration» Utnyttingstype
+*Definisjon:* kodeliste for type utnyttingsgrad (pbl. 1985 &#167;&#167; 20-4 annet ledd bokstav b, 26 første ledd og forskrift TEK kap. III, pbl. &#167;12-7 første ledd nr 5 og TEK17 kap. 5)
+
+ 
+ 
+[discrete]
+===== Koder i modellen
+[cols="25,60,15"]
+|===
+|*Kodenavn:* 
+|*Definisjon:* 
+|*Utvekslingsalias:* 
+|BYA-87 
+|Tillatt bebygd areal i prosent etter byggeforskrift 1987 
+|1 
+|BRA-87 
+|Tillatt bruksareal i kvm etter byggeforskrift 1987 
+|2 
+|TU 
+|Tillatt tomteutnyttelse i prosent 
+|3 
+|U 
+|Tillatt grad av utnytting (byggeforskrift 1985 og tidligere) 
+|4 
+|F 
+|Tillatt flateutnyttelse i prosent 
+|5 
+|BGA 
+|Brutto gulvareal (BGA i kvm) 
+|6 
+|BFA 
+|Bebygd flate (BFA i kvm) 
+|7 
+|Ikke tillatt å bebygge 
+| 
+|10 
+|Ikke tillatt med ytterligere bebyggelse 
+| 
+|11 
+|%-BYA-97 
+|Tillatt bebygd areal i prosent etter byggeforskrift 1997 
+|12 
+|T-BRA 
+|Tillatt bruksareal i kvm etter byggeforskrift 1997 
+|13 
+|%-TU 
+|Prosent tomteutnyttelse etter byggeforskrift 1997 
+|14 
+|BYA 
+|Bebygd areal i kvm etter TEK 2007/TEK17 
+|15 
+|%-BYA 
+|Bebygd areal i prosent etter TEK 2007/TEK17 
+|16 
+|BRA 
+|Bruksareal i kvm etter TEK 2007/TEK17 
+|17 
+|%-BRA 
+|Prosent bruksareal etter TEK 2007/TEK17 
+|18 
+|===
+ 
+'''
+ 
+[[vertikalnivå]]
+===== «Enumeration» Vertikalnivå
+*Definisjon:* kodeliste for planområdets beliggenhet i forhold til jordoverflaten (pbl. &#167; 19-1 sjette ledd, &#167; 20-1 andre og femte ledd og &#167; 22 og &#167; 28-2)
+ 
+ 
+[discrete]
+===== Koder i modellen
+[cols="25,60,15"]
+|===
+|*Kodenavn:* 
+|*Definisjon:* 
+|*Utvekslingsalias:* 
+|Under grunnen (tunnel) 
+|Under bakken, f.eks. tunnel. 
+|1 
+|På grunnen/vannoverflate 
+|På bakken eller på vannoverflata 
+|2 
+|Over grunnen (bru) 
+|Over bakken, f.eks. bru. 
+|3 
+|På bunnen (vann/sjø) 
+|På bunnen av sjø eller innsjø 
+|4 
+|I vannsøylen 
+|I vannsøylen 
+|5 
+|===
+ 
+'''
+ 
+[[eierformtype]]
+===== «Enumeration» EierformType
+*Definisjon:* kodeliste for eierform.
+Eierform henviser til planbestemmelse om arealet skal brukes av det offentlige, eller være fellesarealer for flere eiendommer (pbl. &#167; 11-10 nr. 3 og &#167; 12-7 nr. 14)
+ 
+ 
+[discrete]
+===== Koder i modellen
+[cols="25,60,15"]
+|===
+|*Kodenavn:* 
+|*Definisjon:* 
+|*Utvekslingsalias:* 
+|offentlig 
+| 
+|1 
+|felles 
+| 
+|2 
+|annen eierform 
+|Hverken hjemlet i pbl. &#167; 11-10 nr. 3 eller &#167; 12-7 nr. 14. Brukes som default verdi for arealer som ikke har kodeverdi 1 eller 2. 
+|3 
+|===
+<<<
+'''
+===== Underpakke: Pbl2008
+*Definisjon:* pakke med klasser som er felles for reguleringsplan og kommuneplan, men spesifikke for pbl2008
+ 
+'''
+ 
+.HensynSone kodelister
+image::diagrammer\HensynSone kodelister.png[link=diagrammer\HensynSone kodelister.png, alt="Diagram som viser kodelister for hensysnsoner"]
+ 
+'''
+ 
+.HøydeFraPlanbestemmelse
+image::diagrammer\HøydeFraPlanbestemmelse.png[link=diagrammer\HøydeFraPlanbestemmelse.png, alt="Diagram som viser den sammensatte datatypen h&#248;ydeFraPlanbestemmelse"]
+ 
+'''
+ 
+[[høydefraplanbestemmelse]]
+===== Pbl2008::«dataType» HøydeFraPlanbestemmelse
+*Definisjon:* regulert høyde gitt i planbestemmelser (bestemmelse om utforming illustrert på kart, pbl. &#167; 12-7 nr. 1)
+ 
+ 
+[discrete]
+====== Egenskaper
+[cols="20,80"]
+|===
+|*Navn:* 
+|*regulerthøyde* 
+|Definisjon: 
+|tall for kotehøyde eller høyde over terreng ved bestemmelse om regulert høyde 
+|Multiplisitet: 
+|[1..1] 
+|Type: 
+|http://skjema.geonorge.no/SOSI/basistype/Real[Real] 
+|Profilparametre i tagged values:  
+| 
+SOSI_navn: REGULERTHØYDE +
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*typeHøyde* 
+|Definisjon: 
+|egenskap som angir hva planbestemmelsen regulerer høyden av 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|<<typehøyde, «Enumeration» TypeHøyde>> 
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*høydereferansesystem* 
+|Definisjon: 
+|referansesystem som høydeverdiene refererer til. 
+
+Offisielt høydereferansesystem i Norge er NN2000, men eldre planer kan ha brukt et eldre høydereferansesystem 
+ 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|<<høydereferansesystem, «codeList» Høydereferansesystem>> 
+|Profilparametre i tagged values:  
+| 
+SOSI_navn: HØYDE-REF +
+|===
+[cols="20,80"]
+|===
+|*Navn:* 
+|*terrengreferanse* 
+|Definisjon: 
+|referanseflate som er utgangspunktet for å angi høyde over terreng. 
+
+Kan bare brukes for gesimshøyde og mønehøyde
+ 
+|Multiplisitet: 
+|[0..1] 
+|Type: 
+|<<terrengreferanse, «Enumeration» Terrengreferanse>> 
+|===
+ 
+[discrete]
+====== Restriksjoner
+[cols="20,80"]
+|===
+|*Navn:* 
+|*Betingelse for bruk av terrengreferanse* 
+|Beskrivelse: 
+|Terrengreferanse kan brukes i steden for høydereferansesystem dersom typeHøyde er gesims- eller mønehøyde.
+
+INV: ( høydereferansesystem-&gt;nonEmpty() AND terrengreferanse-&gt;isEmpty() )
+OR ( terrengreferanse-&gt;nonEmpty() AND  høydereferansesystem-&gt;isEmpty() 
+AND typehøyde-&gt;nonEmpty() AND (typeHøyde = 'TH' OR typeHøyde = 'PH')   )
+
+ 
+|===
+ 
+'''
+ 
+[[typehøyde]]
+===== Pbl2008::«Enumeration» TypeHøyde
+*Definisjon:* koder som angir hva slags høyde som er regulert 
+ 
+ 
+[discrete]
+====== Koder i modellen
+[cols="25,60,15"]
+|===
+|*Kodenavn:* 
+|*Definisjon:* 
+|*Utvekslingsalias:* 
+|gesimshøyde 
+| 
+|GH 
+|mønehøyde 
+| 
+|MH 
+|terrenghøyde 
+| 
+|TH 
+|planeringshøyde 
+| 
+|PH 
+|===
+ 
+'''
+ 
+[[terrengreferanse]]
+===== Pbl2008::«Enumeration» Terrengreferanse
+*Definisjon:* liste over type terrengoverflate som kan være utgangspunkt for å angi høyde over terreng
+ 
+ 
+[discrete]
+====== Profilparametre i tagged values
+[cols="20,80"]
+|===
+|asDictionary 
+|false 
+|SOSI_datatype 
+|T 
+|SOSI_lengde 
+|6 
+|SOSI_navn 
+|HØYDE-REF 
+|===
+ 
+[discrete]
+====== Koder i modellen
+[cols="20,80"]
+|===
+|*Navn:* 
+|*Definisjon:* 
+|ferdigPlanertTerreng 
+| 
+|gatenivå 
+| 
+|eksistrendeTerreng 
+| 
+|===
+ 
+'''
+ 
+[[kpsikringsonetype]]
+===== Pbl2008::«Enumeration» KpSikringSoneType
+*Definisjon:* kode for sikring i hensynsone for sikring i kommuneplan (pbl. &#167; 11-8, tredje ledd bokstav a)
+ 
+ 
+[discrete]
+====== Koder i modellen
+[cols="25,60,15"]
+|===
+|*Kodenavn:* 
+|*Definisjon:* 
+|*Utvekslingsalias:* 
+|Nedslagsfelt drikkevann 
+| 
+|110 
+|Område for grunnvannsforsyning 
+| 
+|120 
+|Byggeforbud rundt veg, bane og flyplass 
+| 
+|130 
+|Andre sikringssoner 
+| 
+|190 
+|===
+ 
+'''
+ 
+[[rpsikringsonetype]]
+===== Pbl2008::«Enumeration» RpSikringSoneType
+*Definisjon:* kode for sikring i hensynsone for sikring i reguleringsplan (pbl. &#167; 12-6, jf. &#167; 11-8 tredje ledd bokstav a)
+ 
+ 
+[discrete]
+====== Koder i modellen
+[cols="25,60,15"]
+|===
+|*Kodenavn:* 
+|*Definisjon:* 
+|*Utvekslingsalias:* 
+|Nedslagsfelt drikkevann 
+| 
+|110 
+|Område for grunnvannsforsyning 
+| 
+|120 
+|Byggeforbud rundt veg, bane og flyplass 
+| 
+|130 
+|Andre sikringssoner 
+| 
+|190 
+|Frisikt 
+|Frisiktsone ihht vegloven 
+|140 
+|===
+ 
+'''
+ 
+[[støysonetype]]
+===== Pbl2008::«Enumeration» StøySoneType
+*Definisjon:* kode for støy i hensynsone for støy (pbl. &#167; 11-8, tredje ledd bokstav a)
+ 
+ 
+[discrete]
+====== Koder i modellen
+[cols="25,60,15"]
+|===
+|*Kodenavn:* 
+|*Definisjon:* 
+|*Utvekslingsalias:* 
+|Rød sone 
+|Rød sone iht. T-1442 
+|210 
+|Gul sone 
+|Gul sone iht. T-1442 
+|220 
+|Grønn sone 
+|Grønn sone iht. T-1442 
+|230 
+|Andre støysoner 
+|Andre støysoner 
+|290 
+|===
+ 
+'''
+ 
+[[faresonetype]]
+===== Pbl2008::«Enumeration» FareSoneType
+*Definisjon:* kode for fare i hensynssone for fare (pbl. &#167; 11-8, tredje ledd bokstav a)
+ 
+ 
+[discrete]
+====== Koder i modellen
+[cols="25,60,15"]
+|===
+|*Kodenavn:* 
+|*Definisjon:* 
+|*Utvekslingsalias:* 
+|Ras- og skredfare 
+| 
+|310 
+|Flomfare 
+| 
+|320 
+|Radon 
+| 
+|330 
+|Brann-/eksplosjonsfare 
+| 
+|350 
+|Skytebane 
+| 
+|360 
+|Høyspenningsanlegg (inkl høyspentkabler) 
+| 
+|370 
+|Sone for militær virksomhet 
+| 
+|380 
+|Annen fare 
+| 
+|390 
+|===
+ 
+'''
+ 
+[[infrastruktursonetype]]
+===== Pbl2008::«Enumeration» InfrastrukturSoneType
+*Definisjon:* kode for infrastrukturkrav i hensynsone for infrastruktur (pbl. &#167; 11-8, tredje ledd bokstav b)
+ 
+ 
+[discrete]
+====== Koder i modellen
+[cols="25,60,15"]
+|===
+|*Kodenavn:* 
+|*Definisjon:* 
+|*Utvekslingsalias:* 
+|Krav vedrørende infrastruktur 
+| 
+|410 
+|Rekkefølgekrav infrastruktur 
+| 
+|430 
+|Rekkefølgekrav samfunnservice 
+| 
+|440 
+|Rekkefølgekrav grønnstruktur 
+| 
+|450 
+|===
+ 
+'''
+ 
+[[angitthensynsonetype]]
+===== Pbl2008::«Enumeration» AngittHensynSoneType
+*Definisjon:* kode for angitt hensyn i hensynssone for nærmere angitt hensyn  (11-8 tredje ledd bokstav c)
+ 
+ 
+[discrete]
+====== Koder i modellen
+[cols="25,60,15"]
+|===
+|*Kodenavn:* 
+|*Definisjon:* 
+|*Utvekslingsalias:* 
+|Hensyn landbruk 
+| 
+|510 
+|Hensyn reindrift 
+| 
+|520 
+|Hensyn friluftsliv 
+| 
+|530 
+|Hensyn grønnstruktur 
+| 
+|540 
+|Hensyn landskap 
+| 
+|550 
+|Bevaring naturmiljø 
+| 
+|560 
+|Bevaring kulturmiljø 
+| 
+|570 
+|Randområder til verneområde 
+|Randområder til nasjonalpark/landskapsvernområde 
+|580 
+|Sikring av mineralressurser 
+|hensynssone for sikring av mineralressurser 
+|590 
+|===
+ 
+'''
+ 
+[[båndleggingsonetype]]
+===== Pbl2008::«Enumeration» BåndleggingSoneType
+*Definisjon:* kode for båndlegging i hensynssone for båndlegging (pbl. &#167; 11-8 tredje ledd bokstav d)
+ 
+ 
+[discrete]
+====== Koder i modellen
+[cols="25,60,15"]
+|===
+|*Kodenavn:* 
+|*Definisjon:* 
+|*Utvekslingsalias:* 
+|Båndlegging for regulering etter pbl. 
+| 
+|710 
+|Båndlegging etter naturvernloven 
+|Båndlegging etter lov om naturvern 
+|720 
+|Båndlegging etter kulturminneloven 
+|Båndlegging etter lov om kulturminner 
+|730 
+|Båndlegging etter markaloven 
+|Båndlegging etter lov om naturområder i Oslo og nærliggende kommuner (markalovn) 
+|735 
+|Båndlegging etter andre lover 
+| 
+|740 
+|Båndlegging etter vegloven 
+|Båndlegging i henhold til avkjøringsklasser etter vegloven 
+|750 
+|Båndlegging - generalisert (utgått) 
+|Ikke tillatt brukt på planer vedtatt iht. SOSI 4.5 eller nyere 
+|700 
+|===
+ 
+'''
+ 
+[[gjennomføringsonetype]]
+===== Pbl2008::«Enumeration» GjennomføringSoneType
+*Definisjon:* kode for gjennomføringsvirkemidler i gjennomføringssone (pbl. &#167; 11-8 tredje ledd bokstav e andre ledd)
+ 
+ 
+[discrete]
+====== Koder i modellen
+[cols="25,60,15"]
+|===
+|*Kodenavn:* 
+|*Definisjon:* 
+|*Utvekslingsalias:* 
+|Krav om felles planlegging 
+| 
+|810 
+|Omforming 
+| 
+|820 
+|Fornyelse 
+| 
+|830 
+|Krav om felles planlegging, omforming og fornyelse - generalisert (utgått) 
+|Ikke tillatt brukt på planer vedtatt iht. SOSI 4.5 eller nyere 
+|800 
+|===
+ 
+'''
+ 
+[[detaljeringsonetype]]
+===== Pbl2008::«Enumeration» DetaljeringSoneType
+*Definisjon:* kode for detaljering i detaljeringssone - videreføring av gjeldende reguleringsplan (pbl. &#167; 11-8 tredje ledd bokstav f)
+ 
+ 
+[discrete]
+====== Koder i modellen
+[cols="25,60,15"]
+|===
+|*Kodenavn:* 
+|*Definisjon:* 
+|*Utvekslingsalias:* 
+|Reguleringsplan skal fortsatt gjelde 
+| 
+|910 
+|Reguleringsplan skal fortsatt gjelde - generalisert (utgått) 
+|Ikke tillatt brukt på planer vedtatt iht. SOSI 4.5 eller nyere 
+|900 
+|===
+// End of UML-model
